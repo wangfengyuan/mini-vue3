@@ -140,5 +140,53 @@ function trigger(target, key) {
 }
 ```
 
+## 嵌套的effect与effect栈
+```
+effect(function effectFn1() {
+  effect(function effectFn2() {}
+})
+```
+以下渲染场景就是嵌套
+```
+const Bar = {
+  render() {}
+}
 
+const Foo = {
+  render() {
+    return <Bar />
+  }
+}
+```
+相当于
+```
+effect(() => {
+  Foo.render()
+  effect(() => {
+    Bar.render();
+  })
+})
+```
+
+```
+// effect栈
+const effectStack = [];
+
+function effect(fn) {
+  const effectFn = () => {
+    // 清理旧的依赖
+    cleanup(effectFn);
+    // 将当前正在执行的effect函数赋值给activeEffect
+    activeEffect = effectFn;
+    // 当前副作用函数入栈
+    effectStack.push(effectFn);
+    fn();
+    // 调用之后将当前副作用函数出站，并将activeEffect还原
+    effectStack.pop();
+    activeEffect = effectStack[effectStack.length - 1];
+  }
+  effectFn.deps = [];
+  effectFn();
+}
+```
 

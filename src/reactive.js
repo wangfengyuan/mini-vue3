@@ -10,6 +10,9 @@ const bucket = new WeakMap();
 // 用一个全局变量存储当前正在执行的副作用effect函数
 let activeEffect;
 
+// effect栈
+const effectStack = [];
+
 function cleanup(effectFn) {
   for (let i = 0; i < effectFn.deps.length; i++) {
     // deps是effectFn引用的依赖集合
@@ -28,7 +31,12 @@ function effect(fn) {
     cleanup(effectFn);
     // 将当前正在执行的effect函数赋值给activeEffect
     activeEffect = effectFn;
+    // 当前副作用函数入栈
+    effectStack.push(effectFn);
     fn();
+    // 调用之后将当前副作用函数出站，并将activeEffect还原
+    effectStack.pop();
+    activeEffect = effectStack[effectStack.length - 1];
   }
   effectFn.deps = [];
   effectFn();
