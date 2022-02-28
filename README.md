@@ -190,7 +190,7 @@ function effect(fn) {
 }
 ```
 
-## 避免无线递归循环
+## 避免无限递归循环
 ```
 effect(() => obj.foo++);
 ```
@@ -212,3 +212,38 @@ function trigger(target, key) {
 }
 ```
 
+## 调度执行
+```
+function effect(fn, options) {
+  ...
+  effectFn.options = options;
+  effectFn();
+}
+
+function trigger(target, key) {
+  ...
+  effectsToRun.forEach(effectFn => {
+    if (effectFn.options.scheduler) {
+      effectFn.options.scheduler(effectFn);
+    } else {
+      effectFn();
+    }
+  });
+}
+
+const data = { ok: true, text: 'hello world', foo: 1 };
+effect(() => console.log(obj.foo), {
+  scheduler: (effectFn) => {
+    setTimeout(effectFn);
+  }
+});
+obj.foo++;
+console.log('结束了');
+
+```
+打印结果
+```
+1
+结束了
+2
+```

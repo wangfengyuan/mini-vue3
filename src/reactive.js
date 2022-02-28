@@ -25,7 +25,7 @@ function cleanup(effectFn) {
 }
 
 
-function effect(fn) {
+function effect(fn, options) {
   const effectFn = () => {
     // 清理旧的依赖
     cleanup(effectFn);
@@ -39,6 +39,7 @@ function effect(fn) {
     activeEffect = effectStack[effectStack.length - 1];
   }
   effectFn.deps = [];
+  effectFn.options = options;
   effectFn();
 }
 
@@ -72,7 +73,13 @@ function trigger(target, key) {
       effectsToRun.add(effectFn);
     }
   });
-  effectsToRun.forEach((fn) => fn());
+  effectsToRun.forEach(effectFn => {
+    if (effectFn.options.scheduler) {
+      effectFn.options.scheduler(effectFn);
+    } else {
+      effectFn();
+    }
+  });
 }
 
 const obj = new Proxy(data, {
@@ -87,6 +94,10 @@ const obj = new Proxy(data, {
   },
 });
 
-effect(() => obj.foo++);
-obj.ok = false;
-obj.text = 'hello vue3';
+effect(() => console.log(obj.foo), {
+  scheduler: (effectFn) => {
+    setTimeout(effectFn);
+  }
+});
+obj.foo++;
+console.log('结束了');
