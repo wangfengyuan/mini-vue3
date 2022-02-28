@@ -15,26 +15,35 @@ function effect(fn) {
 
 const data = { text: 'hello world' };
 
+function track(target, key) {
+  if (!activeEffect) return;
+  let depsMap = bucket.get(target);
+  if (!depsMap) {
+    bucket.set(target, (depsMap = new Map()));
+  }
+  let deps = depsMap.get(key);
+  if (!deps) {
+    depsMap.set(key, (deps = new Set()));
+  }
+  deps.add(activeEffect);
+}
+
+function trigger(target, key) {
+  const depsMap = bucket.get(target);
+  if (!depsMap) return;
+  const deps = depsMap.get(key);
+  deps && deps.forEach((fn) => fn());
+}
+
 const obj = new Proxy(data, {
   get(target, key, receiver) {
-    if (!activeEffect) return;
-    let depsMap = bucket.get(target);
-    if (!depsMap) {
-      bucket.set(target, (depsMap = new Map()));
-    }
-    let deps = depsMap.get(key);
-    if (!deps) {
-      depsMap.set(key, (deps = new Set()));
-    }
-    deps.add(activeEffect);
+    track(target, key);
     return Reflect.get(target, key, receiver);
   },
-  set(target, key, newVal, receiver) {
-      target[key] = newVal;
-    const depsMap = bucket.get(target);
-    if (!depsMap) return;
-    const deps = depsMap.get(key);
-    deps && deps.forEach((fn) => fn());
+  set(target, key, val, receiver) {
+    const res = Reflect.set(target, key, val, receiver);
+    trigger(target, key);
+    return res;
   },
 });
 

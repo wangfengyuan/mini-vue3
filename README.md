@@ -1,7 +1,75 @@
-# vue3badapple
-前段时间在掘金论坛上看到一篇文章，文章里通过 js 将 badapple 视频转换成字符画视频，看完后觉得这个视频还有效果挺好玩的，想着 vue3 提供了自定义渲染器的功能，可以自己也实现一下上面的功能，同时体验一下自定义渲染器，最终使用米大师三个字符实现
+# Reactive模块
 
-# 启动方法
-npm install
+## 初体检
+```
+const bucket = new WeakMap();
+let activeEffect;
 
-npm run dev
+function effect(fn) {
+  activeEffect = fn;
+  fn();
+}
+
+const data = { text: 'hello world' };
+
+const obj = new Proxy(data, {
+  get(target, key, receiver) {
+    if (!activeEffect) return;
+    let depsMap = bucket.get(target);
+    if (!depsMap) {
+      bucket.set(target, (depsMap = new Map()));
+    }
+    let deps = depsMap.get(key);
+    if (!deps) {
+      depsMap.set(key, (deps = new Set()));
+    }
+    deps.add(activeEffect);
+    return Reflect.get(target, key, receiver);
+  },
+  set(target, key, newVal, receiver) {
+      target[key] = newVal;
+    const depsMap = bucket.get(target);
+    if (!depsMap) return;
+    const deps = depsMap.get(key);
+    deps && deps.forEach((fn) => fn());
+  },
+});
+
+effect(() => (document.body.innerText = obj.text));
+setTimeout(() => (obj.text = 'hello vue3'), 1000);
+```
+
+## 封装track和trigger
+```
+function track(target, key) {
+  if (!activeEffect) return;
+  let depsMap = bucket.get(target);
+  if (!depsMap) {
+    bucket.set(target, (depsMap = new Map()));
+  }
+  let deps = depsMap.get(key);
+  if (!deps) {
+    depsMap.set(key, (deps = new Set()));
+  }
+  deps.add(activeEffect);
+}
+
+function trigger(target, key) {
+  const depsMap = bucket.get(target);
+  if (!depsMap) return;
+  const deps = depsMap.get(key);
+  deps && deps.forEach((fn) => fn());
+}
+
+const obj = new Proxy(data, {
+  get(target, key, receiver) {
+    track(target, key);
+    return Reflect.get(target, key, receiver);
+  },
+  set(target, key, val, receiver) {
+    const res = Reflect.set(target, key, val, receiver);
+    trigger(target, key);
+    return res;
+  },
+});
+```
