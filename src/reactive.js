@@ -42,7 +42,7 @@ function effect(fn) {
   effectFn();
 }
 
-const data = { ok: true, text: 'hello world' };
+const data = { ok: true, text: 'hello world', foo: 1 };
 
 function track(target, key) {
   if (!activeEffect) return;
@@ -66,7 +66,12 @@ function trigger(target, key) {
   const deps = depsMap.get(key);
   // deps && deps.forEach((fn) => fn());
   // effectsToRun构建一个新的Set, 避免Set中删除又新增导致无限循环
-  const effectsToRun = new Set(deps);
+  const effectsToRun = new Set();
+  deps && deps.forEach(effectFn => {
+    if (effectFn !== activeEffect) {
+      effectsToRun.add(effectFn);
+    }
+  });
   effectsToRun.forEach((fn) => fn());
 }
 
@@ -82,9 +87,6 @@ const obj = new Proxy(data, {
   },
 });
 
-effect(() => {
-  console.log('--------');
-  document.body.innerText = obj.ok ? obj.text : 'not'
-});
+effect(() => obj.foo++);
 obj.ok = false;
 obj.text = 'hello vue3';

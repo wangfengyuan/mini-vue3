@@ -190,3 +190,25 @@ function effect(fn) {
 }
 ```
 
+## 避免无线递归循环
+```
+effect(() => obj.foo++);
+```
+如果trigger触发执行的副作用函数与当前正在执行的副作用函数相同，则不触发执行
+```
+function trigger(target, key) {
+  const depsMap = bucket.get(target);
+  if (!depsMap) return;
+  const deps = depsMap.get(key);
+  // deps && deps.forEach((fn) => fn());
+  // effectsToRun构建一个新的Set, 避免Set中删除又新增导致无限循环
+  const effectsToRun = new Set();
+  deps && deps.forEach(effectFn => {
+    if (effectFn !== activeEffect) {
+      effectsToRun.add(effectFn);
+    }
+  });
+  effectsToRun.forEach((fn) => fn());
+}
+```
+
