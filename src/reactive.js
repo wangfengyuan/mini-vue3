@@ -7,6 +7,29 @@
 
 const bucket = new WeakMap();
 
+// 定义一个任务队列
+const jobQueue = new Set();
+// 使用Promise.resolve()创建一个promise实例，我们用它将一个任务添加到任务队列
+const p = Promise.resolve();
+
+// 一个标志位，用于标记当前是否有副作用正在执行
+let isFlushing = false;
+
+function flushJob() {
+  // 如果队列正在刷新，则什么都不做
+  if (isFlushing) return;
+  // 设置为true代表正在刷新
+  isFlushing = true;
+  p.then(() => {
+    // 将jobQueue中的任务全部执行
+    jobQueue.forEach(job => job());
+  }).finally(() => {
+    // 设置为false代表刷新完成
+    isFlushing = false;
+  })
+
+}
+
 // 用一个全局变量存储当前正在执行的副作用effect函数
 let activeEffect;
 
@@ -96,8 +119,13 @@ const obj = new Proxy(data, {
 
 effect(() => console.log(obj.foo), {
   scheduler: (effectFn) => {
-    setTimeout(effectFn);
+    // 每次调度将副作用函数添加到任务队列中
+    jobQueue.add(effectFn);
+    // 刷新队列
+    flushJob();
   }
 });
+obj.foo++;
+obj.foo++;
 obj.foo++;
 console.log('结束了');
