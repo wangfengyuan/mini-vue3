@@ -152,6 +152,40 @@ function computed(getter) {
   return obj;
 }
 
+// watch接收两个参数，第一个是source响应式数据，第二个是回调函数
+function watch(source, cb) {
+  let getter;
+  // 如果参数source是函数，则直接把source作为getter
+  if (typeof source === 'function') {
+    getter = source;
+  } else {
+    // 否则按照原来方式递归读取source的属性
+    getter = () => traverse(source);
+  }
+  effect(
+    () => getter(),
+    {
+      scheduler() {
+        // 当source发生变化时，执行回调函数
+        cb();
+      }
+    }
+  )
+} 
+
+function traverse(value, seen = new Set()) {
+  // 如果value是基本类型，或者已经读取过了，直接返回
+  if (typeof value !== 'object' || value === null || seen.has(value)) return;
+  // 把数据添加到seen中，代表遍历读取过了，
+  seen.add(value);
+  // 暂时不考虑数组结构
+  for(const k in value) {
+    // 对于每个属性，递归调用traverse,这样能访问到每一个属性
+    traverse(value[k], seen);
+  }
+  return value;
+}
+
 // effect(() => console.log(obj.foo), {
 //   scheduler: (effectFn) => {
 //     // 每次调度将副作用函数添加到任务队列中
@@ -166,10 +200,13 @@ function computed(getter) {
 // const value = effectFn();
 // console.log('value', value);
 
-const sumRes = computed(() => obj.foo + obj.bar);
+// const sumRes = computed(() => obj.foo + obj.bar);
 // console.log('sumRes', sumRes.value);
 // obj.foo = 10;
 // console.log('sumRes', sumRes.value);
 
-effect(()=> console.log('sumRes', sumRes.value))
-obj.foo++
+// effect(()=> console.log('sumRes', sumRes.value))
+// obj.foo++
+
+watch(() => obj.foo, () => console.log('数据变化了'))
+obj.foo++;
