@@ -93,7 +93,7 @@ function track(target, key) {
   activeEffect.deps.push(deps);
 }
 
-function trigger(target, key) {
+function trigger(target, key, type) {
   const depsMap = bucket.get(target);
   if (!depsMap) return;
   // 获取key相关的依赖
@@ -109,12 +109,15 @@ function trigger(target, key) {
       effectsToRun.add(effectFn);
     }
   });
+  // 只有操作类型是‘ADD’时，才会触发ITERA_KEY的依赖
   // 将ITERA_KEY相关联的依赖也加入到effectsToRun中
-  iterateDeps && iterateDeps.forEach(effectFn => {
-    if (effectFn !== activeEffect) {
-      effectsToRun.add(effectFn);
-    }
-  });
+  if (type === 'ADD') {
+    iterateDeps && iterateDeps.forEach(effectFn => {
+      if (effectFn !== activeEffect) {
+        effectsToRun.add(effectFn);
+      }
+    });
+  }
   effectsToRun.forEach(effectFn => {
     if (effectFn.options.scheduler) {
       effectFn.options.scheduler(effectFn);
@@ -130,8 +133,11 @@ const obj = new Proxy(data, {
     return Reflect.get(target, key, receiver);
   },
   set(target, key, val, receiver) {
+    // 属性不存在是新增，存在是修改
+    const type = Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
     const res = Reflect.set(target, key, val, receiver);
-    trigger(target, key);
+    // 增加type作为第三个参数，用于区分是新增还是修改
+    trigger(target, key, type);
     return res;
   },
   // 拦截 in 操作符

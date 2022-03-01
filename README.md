@@ -517,3 +517,22 @@ function trigger() {
 ```
 对于forin添加自定义key,ITERATE_KEY, 在trigger中除了获取key相关的依赖，还要获取ITERA_KEY相关联的依赖，然后触发
 
+上面对于forin处理，如果只是修改属性值，也会触发，那么如何需要判断是修改还是新增属性
+```
+// 代理set中
+// 属性不存在是新增，存在是修改
+const type = Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
+// 增加type作为第三个参数，用于区分是新增还是修改
+trigger(target, key, type);
+
+// trigger中
+if (type === 'ADD') {
+  iterateDeps && iterateDeps.forEach(effectFn => {
+    if (effectFn !== activeEffect) {
+      effectsToRun.add(effectFn);
+    }
+  });
+}
+
+```
+
