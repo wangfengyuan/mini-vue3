@@ -162,15 +162,21 @@ function watch(source, cb) {
     // 否则按照原来方式递归读取source的属性
     getter = () => traverse(source);
   }
-  effect(
+  let oldValue, newValue;
+  const effectFn = effect(
     () => getter(),
     {
       scheduler() {
+        newValue = effectFn();
         // 当source发生变化时，执行回调函数
-        cb();
-      }
+        cb(newValue, oldValue);
+        oldValue = newValue;
+      },
+      lazy: true,
     }
-  )
+  );
+  // 手动调用一次effectFn，获取初始值
+  oldValue = effectFn();
 } 
 
 function traverse(value, seen = new Set()) {
@@ -208,5 +214,5 @@ function traverse(value, seen = new Set()) {
 // effect(()=> console.log('sumRes', sumRes.value))
 // obj.foo++
 
-watch(() => obj.foo, () => console.log('数据变化了'))
+watch(() => obj.foo, (newValue, oldValue) => console.log('数据变化了', newValue, oldValue));
 obj.foo++;

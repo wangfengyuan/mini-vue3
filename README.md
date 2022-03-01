@@ -377,3 +377,36 @@ function traverse(value, seen = new Set()) {
 }
 ```
 
+但是当前实现，回调函数并没有获取新值和旧值
+
+```
+function watch(source, cb) {
+  let getter;
+  // 如果参数source是函数，则直接把source作为getter
+  if (typeof source === 'function') {
+    getter = source;
+  } else {
+    // 否则按照原来方式递归读取source的属性
+    getter = () => traverse(source);
+  }
+  let oldValue, newValue;
+  const effectFn = effect(
+    () => getter(),
+    {
+      scheduler() {
+        newValue = effectFn();
+        // 当source发生变化时，执行回调函数
+        cb(newValue, oldValue);
+        oldValue = newValue;
+      },
+      lazy: true,
+    }
+  );
+  // 手动调用一次effectFn，获取初始值
+  oldValue = effectFn();
+} 
+```
+实现如上，通过lazy，然后手动调用一次effectFn，获取初始值，之后scheduler中执行后回去newValue
+
+
+
