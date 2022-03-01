@@ -618,5 +618,37 @@ get(target, key, receiver) {
 },
 
 ```
+接下来实现shallowReactive浅响应
+```
+function createReactive(obj, isShallow = false) {
+  return new Proxy(obj, {
+    get(target, key, receiver) {
+      // 代理对象可以通过raw属性访问原始对象
+      if (key === 'raw') {
+        return target;
+      }
+      track(target, key);
+      const res = Reflect.get(target, key, receiver);
+      // 如果是浅响应，直接返回原始值
+      if (isShallow) {
+        return res;
+      }
+      // 得到原始值结果
+      if (typeof res === 'object' && res !== null) {
+        // 调用reactive方法，将结果转换为响应式对象
+        return reactive(res);
+      }
+      return res;
+    },
+  })
+}
+function reactive(obj) {
+  return createReactive(obj);
+}
+
+function shallowReactive(obj) {
+  return createReactive(obj, true);
+}
+```
 
 
