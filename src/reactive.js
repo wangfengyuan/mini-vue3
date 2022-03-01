@@ -118,6 +118,16 @@ function trigger(target, key, type) {
       }
     });
   }
+  // 
+  if (type === 'ADD' && Array.isArray(target)) {
+    // 去除与length相关的依赖
+    const lengthDeps = depsMap.get('length');
+    lengthDeps && lengthDeps.forEach(effectFn => {
+      if (effectFn !== activeEffect) {
+        effectsToRun.add(effectFn);
+      }
+    });
+  }
   effectsToRun.forEach(effectFn => {
     if (effectFn.options.scheduler) {
       effectFn.options.scheduler(effectFn);
@@ -160,7 +170,10 @@ function createReactive(obj, isShallow = false, isReadonly = false) {
       // 获取旧值
       const oldVal = target[key];
       // 属性不存在是新增，存在是修改
-      const type = Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
+      const type = Array.isArray(target) 
+        // 如果是数组，检测设置索引是否小于数组长度，如果是，则是新增，否则是修改
+        ? Number(key) < target.length ? 'SET' : 'ADD'
+        : Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
       const res = Reflect.set(target, key, val, receiver);
       // 如果target === receiver.raw，说明receive就是target的代理对象
       if (target === receiver.raw) {
@@ -358,6 +371,11 @@ function traverse(value, seen = new Set()) {
 // obj.foo.bar = 5;
 
 // 测试只读
-const obj = shallowReadonly({ foo: { bar: 1 } });
-effect(() => console.log(obj.foo));
-obj.foo.bar = 5;
+// const obj = shallowReadonly({ foo: { bar: 1 } });
+// effect(() => console.log(obj.foo));
+// obj.foo.bar = 5;
+
+// 测试数组
+const arr = reactive([1]);
+effect(() => console.log(arr[0]));
+arr.length = 2;

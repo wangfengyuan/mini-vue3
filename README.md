@@ -702,3 +702,31 @@ function shallowReadonly(obj) {
   return createReactive(obj, true, true);
 }
 ```
+
+## 代理数组
+
+### 数组的索引和length
+思路是set中新增判断，trigger中拿到length相关的依赖并执行
+```
+// set
+const type = Array.isArray(target) 
+// 如果是数组，检测设置索引是否小于数组长度，如果是，则是新增，否则是修改
+? Number(key) < target.length ? 'SET' : 'ADD'
+: Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
+
+// trigger函数
+if (type === 'ADD' && Array.isArray(target)) {
+  // 去除与length相关的依赖
+  const lengthDeps = depsMap.get('length');
+  lengthDeps && lengthDeps.forEach(effectFn => {
+    if (effectFn !== activeEffect) {
+      effectsToRun.add(effectFn);
+    }
+  });
+}
+
+const arr = reactive([1]);
+effect(() => console.log(arr.length));
+arr[3] = 2;
+```
+
