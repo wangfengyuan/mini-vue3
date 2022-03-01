@@ -11,6 +11,8 @@ const bucket = new WeakMap();
 const jobQueue = new Set();
 // 使用Promise.resolve()创建一个promise实例，我们用它将一个任务添加到任务队列
 const p = Promise.resolve();
+// for...in 时没有确定的key，因此采用ITERATE_KEY
+const ITERATE_KEY = Symbol('iterate');
 
 // 一个标志位，用于标记当前是否有副作用正在执行
 let isFlushing = false;
@@ -94,11 +96,21 @@ function track(target, key) {
 function trigger(target, key) {
   const depsMap = bucket.get(target);
   if (!depsMap) return;
+  // 获取key相关的依赖
   const deps = depsMap.get(key);
+  // 获取ITERA_KEY相关联的依赖
+  const iterateDeps = depsMap.get(ITERATE_KEY);
+
   // deps && deps.forEach((fn) => fn());
   // effectsToRun构建一个新的Set, 避免Set中删除又新增导致无限循环
   const effectsToRun = new Set();
   deps && deps.forEach(effectFn => {
+    if (effectFn !== activeEffect) {
+      effectsToRun.add(effectFn);
+    }
+  });
+  // 将ITERA_KEY相关联的依赖也加入到effectsToRun中
+  iterateDeps && iterateDeps.forEach(effectFn => {
     if (effectFn !== activeEffect) {
       effectsToRun.add(effectFn);
     }
@@ -121,6 +133,16 @@ const obj = new Proxy(data, {
     const res = Reflect.set(target, key, val, receiver);
     trigger(target, key);
     return res;
+  },
+  // 拦截 in 操作符
+  has(target, key) {
+    track(target, key);
+    return Reflect.has(target, key);
+  },
+  // 拦截for...in循环
+  ownKeys(target) {
+    track(target, ITERATE_KEY);
+    return Reflect.ownKeys(target);
   },
 });
 
@@ -227,7 +249,19 @@ function traverse(value, seen = new Set()) {
 // effect(()=> console.log('sumRes', sumRes.value))
 // obj.foo++
 
-watch(() => obj.foo, (newValue, oldValue) => console.log('数据变化了', newValue, oldValue), {
-  immediate: true,
+// watch(() => obj.foo, (newValue, oldValue) => console.log('数据变化了', newValue, oldValue), {
+//   immediate: true,
+// });
+// obj.foo++;
+
+// const testobj = { foo: 1 };
+// console.log(Reflect.get(testobj, 'foo', { foo: 10 }));
+
+// effect(() => console.log('foo' in obj));
+// obj.foo = 2;
+effect(() => {
+  for (const key in obj) {
+    console.log(key);
+  }
 });
-obj.foo++;
+obj.foo = 20;

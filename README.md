@@ -466,4 +466,54 @@ scheduler: () => {
 },
 ```
 
+## Reflect
+```
+const obj = {
+  foo: 1,
+  get bar() {
+    return this.foo
+  }
+}
+
+const p = new Proxy(obj, {
+  get(target, key) {
+    track(target, key);
+    return target[key]
+  }
+})
+
+effect(() => console.log(p.bar))
+```
+如果使用上面写法，在读取p.bar时，get方法中实际读取的是target[key]， target指向obj，即obj.bar,所里this指向obj导致最终访问到的是obj.foo造成响应式丢失，为了获取默认的行为，应该采用如下写法，其中receive代表谁在读取属性值，这时this指向proxy对象
+```
+return Reflect.get(target, key, receiver);
+```
+
+```
+// for...in 时没有确定的key，因此采用ITERATE_KEY
+const ITERATE_KEY = Symbol('iterate');
+
+// 拦截 in 操作符
+has(target, key) {
+  track(target, key);
+  return Reflect.has(target, key);
+},
+// 拦截for...in循环
+ownKeys(target) {
+  track(target, ITERATE_KEY);
+  return Reflect.ownKeys(target);
+},
+
+function trigger() {
+  ...
+  // 将ITERA_KEY相关联的依赖也加入到effectsToRun中
+  iterateDeps && iterateDeps.forEach(effectFn => {
+    if (effectFn !== activeEffect) {
+      effectsToRun.add(effectFn);
+    }
+  });
+  ...
+}
+```
+对于forin添加自定义key,ITERATE_KEY, 在trigger中除了获取key相关的依赖，还要获取ITERA_KEY相关联的依赖，然后触发
 
