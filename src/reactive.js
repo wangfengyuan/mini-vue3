@@ -56,17 +56,24 @@ function effect(fn, options) {
     activeEffect = effectFn;
     // 当前副作用函数入栈
     effectStack.push(effectFn);
-    fn();
+    // 将fn的执行结果保存到res
+    const res = fn();
     // 调用之后将当前副作用函数出站，并将activeEffect还原
     effectStack.pop();
     activeEffect = effectStack[effectStack.length - 1];
+    // 将res作为effectFn的返回值
+    return res;
   }
   effectFn.deps = [];
   effectFn.options = options;
-  effectFn();
+  // 只有非lazy的时候才执行
+  if(!options.lazy) {
+    effectFn();
+  }
+  return effectFn;
 }
 
-const data = { ok: true, text: 'hello world', foo: 1 };
+const data = { ok: true, text: 'hello world', foo: 1, bar: 2 };
 
 function track(target, key) {
   if (!activeEffect) return;
@@ -117,15 +124,31 @@ const obj = new Proxy(data, {
   },
 });
 
-effect(() => console.log(obj.foo), {
-  scheduler: (effectFn) => {
-    // 每次调度将副作用函数添加到任务队列中
-    jobQueue.add(effectFn);
-    // 刷新队列
-    flushJob();
+function computed(getter) {
+  // 把getter作为副作用函数，创建一个lazy的effect
+  const effectFn = effect(getter, { lazy: true });
+  const obj = {
+    // 当读取value时执行副作用函数
+    get value() {
+      return effectFn();
+    }
   }
+  return obj;
+}
+
+// effect(() => console.log(obj.foo), {
+//   scheduler: (effectFn) => {
+//     // 每次调度将副作用函数添加到任务队列中
+//     jobQueue.add(effectFn);
+//     // 刷新队列
+//     flushJob();
+//   }
+// });
+const effectFn = effect(() => obj.text + obj.foo, {
+  lazy: true,
 });
-obj.foo++;
-obj.foo++;
-obj.foo++;
-console.log('结束了');
+const value = effectFn();
+console.log('value', value);
+
+const sumRes = computed(() => obj.foo + obj.bar);
+console.log('sumRes', sumRes.value);

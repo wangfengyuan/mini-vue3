@@ -248,3 +248,21 @@ console.log('结束了');
 2
 ```
 
+## 计算属性computed和lazy
+
+effect参数options中添加lazy: true, 针对这种effect不立刻执行而是返回effectFn函数，可供用户自己选择执行，
+对于computed, 实现如下
+```
+function computed(getter) {
+  // 把getter作为副作用函数，创建一个lazy的effect
+  const effectFn = effect(getter, { lazy: true });
+  const obj = {
+    // 当读取value时执行副作用函数
+    get value() {
+      return effectFn();
+    }
+  }
+  return obj;
+}
+```
+
