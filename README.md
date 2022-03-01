@@ -730,3 +730,25 @@ effect(() => console.log(arr.length));
 arr[3] = 2;
 ```
 
+但是还有一种场景如下,直接修改length， 这种场景length变小影响当前索引时需要触发，但是比如arr.length = 2，当前索引值没变化就不需要触发
+```
+const arr = reactive([1]);
+effect(() => console.log(arr[0]));
+arr.length = 0;
+```
+
+需要在trigger中额外判断，如果新修改的值val 小于等于 depsMap中的key，说明这一部分需要触发
+```
+// 如果目标是数组并且修改了数组的length属性
+if (Array.isArray(target) && key === 'length') {
+  depsMap.forEach((effects, key) => {
+    if (key >= val) {
+      effects.forEach(effectFn => {
+        if (effectFn !== activeEffect) {
+          effectsToRun.add(effectFn);
+        }
+      })
+    }
+  })
+}
+```

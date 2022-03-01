@@ -93,7 +93,7 @@ function track(target, key) {
   activeEffect.deps.push(deps);
 }
 
-function trigger(target, key, type) {
+function trigger(target, key, type, val) {
   const depsMap = bucket.get(target);
   if (!depsMap) return;
   // 获取key相关的依赖
@@ -109,6 +109,19 @@ function trigger(target, key, type) {
       effectsToRun.add(effectFn);
     }
   });
+
+  // 如果目标是数组并且修改了数组的length属性
+  if (Array.isArray(target) && key === 'length') {
+    depsMap.forEach((effects, key) => {
+      if (key >= val) {
+        effects.forEach(effectFn => {
+          if (effectFn !== activeEffect) {
+            effectsToRun.add(effectFn);
+          }
+        })
+      }
+    })
+  }
   // 只有操作类型是‘ADD’时，才会触发ITERA_KEY的依赖
   // 将ITERA_KEY相关联的依赖也加入到effectsToRun中
   if (type === 'ADD' || type === 'DELETE') {
@@ -180,7 +193,7 @@ function createReactive(obj, isShallow = false, isReadonly = false) {
         // 比较新旧值是否相等，并且都不是NaNs时才触发更新
         if (oldVal !== val && (oldVal === oldVal || val === val)) {
           // 增加type作为第三个参数，用于区分是新增还是修改
-          trigger(target, key, type);
+          trigger(target, key, type, val);
         }
       }
       return res;
@@ -376,6 +389,6 @@ function traverse(value, seen = new Set()) {
 // obj.foo.bar = 5;
 
 // 测试数组
-const arr = reactive([1]);
-effect(() => console.log(arr[0]));
+const arr = reactive([1, 2, 3]);
+effect(() => console.log(arr[1]));
 arr.length = 2;
