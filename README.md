@@ -264,5 +264,70 @@ function computed(getter) {
   }
   return obj;
 }
+
+const sumRes = computed(() => obj.foo + obj.bar);
+console.log('sumRes', sumRes.value);
+```
+但是当前实现，只做到了懒执行，并没有缓存值，即多次访问sumRes.value会导致多次运行计算，即使obj.foo和obj.bar的值没有发生变化
+
+```
+function computed(getter) {
+  // 用value缓存上一次计算的值
+  let value;
+  // dirty标志是否需要重新计算，true代表意味着脏，需要重新计算
+  let dirty = true;
+  // 把getter作为副作用函数，创建一个lazy的effect
+  const effectFn = effect(getter, {
+    // 添加调度器，其中将dirty重置为true
+    scheduler() {
+      dirty = true;
+    },
+    lazy: true,
+  });
+  const obj = {
+    // 当读取value时执行副作用函数
+    get value() {
+      if (dirty) {
+        value = effectFn();
+        dirty = false;
+      }
+      return value;
+    }
+  }
+  return obj;
+}
+```
+
+```
+const sumRes = computed(() => obj.foo + obj.bar);
+effect(()=> console.log('sumRes', sumRes.value))
+obj.foo++
+```
+当修改obj.foo时，sumRes并没有重新打印
+但是上面getter只会把computed内部的effect收集为依赖，而当把计算属性用于另外一个effect时，发生了effect嵌套，外层的effect不会被内层effect中的响应式数据收集，解决办法是添加收集和触发, 如下
+```
+function computed(getter) {
+  ...
+  const effectFn = effect(getter, {
+    // 添加调度器，其中将dirty重置为true
+    scheduler() {
+      dirty = true;
+      trigger(obj, 'value');
+    },
+    lazy: true,
+  });
+  const obj = {
+    get value() {
+      if (dirty) {
+        value = effectFn();
+        dirty = false;
+      }
+      track(obj, 'value');
+      return value;
+    }
+  }
+  return obj;
+}
+
 ```
 

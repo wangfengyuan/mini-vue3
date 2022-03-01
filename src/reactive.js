@@ -48,7 +48,7 @@ function cleanup(effectFn) {
 }
 
 
-function effect(fn, options) {
+function effect(fn, options = {}) {
   const effectFn = () => {
     // 清理旧的依赖
     cleanup(effectFn);
@@ -125,12 +125,28 @@ const obj = new Proxy(data, {
 });
 
 function computed(getter) {
+  // 用value缓存上一次计算的值
+  let value;
+  // dirty标志是否需要重新计算，true代表意味着脏，需要重新计算
+  let dirty = true;
   // 把getter作为副作用函数，创建一个lazy的effect
-  const effectFn = effect(getter, { lazy: true });
+  const effectFn = effect(getter, {
+    // 添加调度器，其中将dirty重置为true
+    scheduler() {
+      dirty = true;
+      trigger(obj, 'value');
+    },
+    lazy: true,
+  });
   const obj = {
     // 当读取value时执行副作用函数
     get value() {
-      return effectFn();
+      if (dirty) {
+        value = effectFn();
+        dirty = false;
+      }
+      track(obj, 'value');
+      return value;
     }
   }
   return obj;
@@ -144,11 +160,16 @@ function computed(getter) {
 //     flushJob();
 //   }
 // });
-const effectFn = effect(() => obj.text + obj.foo, {
-  lazy: true,
-});
-const value = effectFn();
-console.log('value', value);
+// const effectFn = effect(() => obj.text + obj.foo, {
+//   lazy: true,
+// });
+// const value = effectFn();
+// console.log('value', value);
 
 const sumRes = computed(() => obj.foo + obj.bar);
-console.log('sumRes', sumRes.value);
+// console.log('sumRes', sumRes.value);
+// obj.foo = 10;
+// console.log('sumRes', sumRes.value);
+
+effect(()=> console.log('sumRes', sumRes.value))
+obj.foo++
