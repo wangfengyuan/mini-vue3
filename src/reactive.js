@@ -136,7 +136,13 @@ function reactive(obj) {
         return target;
       }
       track(target, key);
-      return Reflect.get(target, key, receiver);
+      const res = Reflect.get(target, key, receiver);
+      // 得到原始值结果
+      if (typeof res === 'object' && res !== null) {
+        // 调用reactive方法，将结果转换为响应式对象
+        return reactive(res);
+      }
+      return res;
     },
     set(target, key, val, receiver) {
       // 获取旧值
@@ -302,12 +308,17 @@ function traverse(value, seen = new Set()) {
 // delete obj.foo;
 
 // 测试原型链
-const obj = {}
-const proto = { bar: 1 };
-const child = reactive(obj);
-const parent = reactive(proto);
-// 使用parent作为child的原型
-Object.setPrototypeOf(child, parent);
-effect(() => console.log(child.bar));
-console.log(child.raw === obj);
-child.bar = 2;
+// const obj = {}
+// const proto = { bar: 1 };
+// const child = reactive(obj);
+// const parent = reactive(proto);
+// // 使用parent作为child的原型
+// Object.setPrototypeOf(child, parent);
+// effect(() => console.log(child.bar));
+// console.log(child.raw === obj);
+// child.bar = 2;
+
+const obj = reactive({ foo: { bar: 1 } });
+console.log(typeof obj);
+effect(() => console.log(obj.foo.bar));
+obj.foo.bar = 5;

@@ -599,4 +599,24 @@ set(target, key, val, receiver) {
 },
 ```
 
+## 浅响应和深响应
+目前为止的实现是浅响应,实现深响应如下
+```
+get(target, key, receiver) {
+  // 代理对象可以通过raw属性访问原始对象
+  if (key === 'raw') {
+    return target;
+  }
+  track(target, key);
+  const res = Reflect.get(target, key, receiver);
+  // 得到原始值结果
+  if (typeof res === 'object' && res !== null) {
+    // 调用reactive方法，将结果转换为响应式对象
+    return reactive(res);
+  }
+  return res;
+},
+
+```
+
 
