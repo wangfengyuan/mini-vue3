@@ -75,7 +75,7 @@ function effect(fn, options = {}) {
   return effectFn;
 }
 
-const data = { ok: true, text: 'hello world', foo: 1, bar: 2 };
+const data = { ok: true, text: 'hello world', foo: 1 };
 
 function track(target, key) {
   if (!activeEffect) return;
@@ -111,7 +111,7 @@ function trigger(target, key, type) {
   });
   // 只有操作类型是‘ADD’时，才会触发ITERA_KEY的依赖
   // 将ITERA_KEY相关联的依赖也加入到effectsToRun中
-  if (type === 'ADD') {
+  if (type === 'ADD' || type === 'DELETE') {
     iterateDeps && iterateDeps.forEach(effectFn => {
       if (effectFn !== activeEffect) {
         effectsToRun.add(effectFn);
@@ -127,30 +127,58 @@ function trigger(target, key, type) {
   });
 }
 
-const obj = new Proxy(data, {
-  get(target, key, receiver) {
-    track(target, key);
-    return Reflect.get(target, key, receiver);
-  },
-  set(target, key, val, receiver) {
-    // 属性不存在是新增，存在是修改
-    const type = Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
-    const res = Reflect.set(target, key, val, receiver);
-    // 增加type作为第三个参数，用于区分是新增还是修改
-    trigger(target, key, type);
-    return res;
-  },
-  // 拦截 in 操作符
-  has(target, key) {
-    track(target, key);
-    return Reflect.has(target, key);
-  },
-  // 拦截for...in循环
-  ownKeys(target) {
-    track(target, ITERATE_KEY);
-    return Reflect.ownKeys(target);
-  },
-});
+
+function reactive(obj) {
+  return new Proxy(obj, {
+    get(target, key, receiver) {
+      // 代理对象可以通过raw属性访问原始对象
+      if (key === 'raw') {
+        return target;
+      }
+      track(target, key);
+      return Reflect.get(target, key, receiver);
+    },
+    set(target, key, val, receiver) {
+      // 获取旧值
+      const oldVal = target[key];
+      // 属性不存在是新增，存在是修改
+      const type = Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
+      const res = Reflect.set(target, key, val, receiver);
+      // 如果target === receiver.raw，说明receive就是target的代理对象
+      if (target === receiver.raw) {
+        // 比较新旧值是否相等，并且都不是NaNs时才触发更新
+        if (oldVal !== val && (oldVal === oldVal || val === val)) {
+          // 增加type作为第三个参数，用于区分是新增还是修改
+          trigger(target, key, type);
+        }
+      }
+      return res;
+    },
+    // 拦截 in 操作符
+    has(target, key) {
+      track(target, key);
+      return Reflect.has(target, key);
+    },
+    // 拦截for...in循环
+    ownKeys(target) {
+      track(target, ITERATE_KEY);
+      return Reflect.ownKeys(target);
+    },
+    // 拦截delete操作符
+    deleteProperty(target, key) {
+      // 检查被操作属性是否是对象自己的属性
+      const hadKey = Object.prototype.hasOwnProperty.call(target, key);
+      // 完成属性删除
+      const res = Reflect.deleteProperty(target, key);
+      if (res && hadKey) {
+        // 只有当删除属性是自身并删除成功时才触发 
+        trigger(target, key, 'DELETE');
+      }
+      return res;
+    }
+  });
+}
+
 
 function computed(getter) {
   // 用value缓存上一次计算的值
@@ -265,9 +293,21 @@ function traverse(value, seen = new Set()) {
 
 // effect(() => console.log('foo' in obj));
 // obj.foo = 2;
-effect(() => {
-  for (const key in obj) {
-    console.log(key);
-  }
-});
-obj.foo = 20;
+// 测试delete
+// effect(() => {
+//   for (const key in obj) {
+//     console.log(key);
+//   }
+// });
+// delete obj.foo;
+
+// 测试原型链
+const obj = {}
+const proto = { bar: 1 };
+const child = reactive(obj);
+const parent = reactive(proto);
+// 使用parent作为child的原型
+Object.setPrototypeOf(child, parent);
+effect(() => console.log(child.bar));
+console.log(child.raw === obj);
+child.bar = 2;

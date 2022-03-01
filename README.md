@@ -536,3 +536,67 @@ if (type === 'ADD') {
 
 ```
 
+delete操作符拦截
+```
+// 拦截delete操作符
+deleteProperty(target, key) {
+  // 检查被操作属性是否是对象自己的属性
+  const hadKey = Object.prototype.hasOwnProperty.call(target, key);
+  // 完成属性删除
+  const res = Reflect.deleteProperty(target, key);
+  if (res && hadKey) {
+    // 只有当删除属性是自身并删除成功时才触发 
+    trigger(target, key, 'DELETE');
+  }
+  return res;
+}
+```
+
+### 合理的触发响应
+
+当值前后值不一样时才触发，同时特殊的处理NaN，因为 NaN === NaN 返回false， 因此set中处理如下
+```
+// 获取旧值
+const oldVal = target[key];
+// 比较新旧值是否相等，并且都不是NaNs时才触发更新
+if (oldVal !== val && (oldVal === oldVal || val === val)) {
+  // 增加type作为第三个参数，用于区分是新增还是修改
+  trigger(target, key, type);
+}
+```
+假设有如下场景
+```
+const obj = {}
+const proto = { bar: 1 };
+const child = reactive(obj);
+const parent = reactive(proto);
+// 使用parent作为child的原型
+Object.setPrototypeOf(child, parent);
+effect(() => console.log(child.bar));
+child.bar = 2;
+```
+测试发现，child.bar修改时打印了两次child.bar， 原因在于触发child的set时target是obj，receiver为child,上面不存在bar， 所以通过原型链c触发了parent的set， 这时target是proto但是receive还是child, 解决办法是判断receive是不是target的代理对象，是的时候才触发
+
+```
+get(target, key, receiver) {
+  // 代理对象可以通过raw属性访问原始对象
+  if (key === 'raw') {
+    return target;
+  }
+  track(target, key);
+  return Reflect.get(target, key, receiver);
+},
+set(target, key, val, receiver) {
+  // 如果target === receiver.raw，说明receive就是target的代理对象
+  if (target === receiver.raw) {
+    // 比较新旧值是否相等，并且都不是NaNs时才触发更新
+    if (oldVal !== val && (oldVal === oldVal || val === val)) {
+      // 增加type作为第三个参数，用于区分是新增还是修改
+      trigger(target, key, type);
+    }
+  }
+  return res;
+},
+```
+
+
