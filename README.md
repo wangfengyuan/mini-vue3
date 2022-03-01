@@ -752,3 +752,22 @@ if (Array.isArray(target) && key === 'length') {
   })
 }
 ```
+
+### 遍历数组
+只有数组长度变化了，才触发依赖
+```
+const arr = reactive([1, 2, 3]);
+effect(() => {
+  for(const key in arr) {
+    console.log(key);
+  }
+});
+arr[1] = 5;
+arr.length = 2;
+
+// 拦截for...in循环
+ownKeys(target) {
+  track(target, Array.isArray(target) ? 'length': ITERATE_KEY);
+  return Reflect.ownKeys(target);
+},
+```

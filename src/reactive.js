@@ -205,7 +205,7 @@ function createReactive(obj, isShallow = false, isReadonly = false) {
     },
     // 拦截for...in循环
     ownKeys(target) {
-      track(target, ITERATE_KEY);
+      track(target, Array.isArray(target) ? 'length': ITERATE_KEY);
       return Reflect.ownKeys(target);
     },
     // 拦截delete操作符
@@ -389,6 +389,15 @@ function traverse(value, seen = new Set()) {
 // obj.foo.bar = 5;
 
 // 测试数组
+// const arr = reactive([1, 2, 3]);
+// effect(() => console.log(arr[1]));
+// arr.length = 2;
+
 const arr = reactive([1, 2, 3]);
-effect(() => console.log(arr[1]));
+effect(() => {
+  for(const key in arr) {
+    console.log(key);
+  }
+});
+arr[1] = 5;
 arr.length = 2;
