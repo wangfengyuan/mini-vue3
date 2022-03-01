@@ -332,6 +332,8 @@ function computed(getter) {
 ```
 
 ## watch实现
+ 
+### 基础实现
 watch用法如下，第一个参数可以是对象也可以是一个getter, 响应式数据变化时通知对应回调函数执行
 ```
 watch(obj, () => console.log('数据变化了'))
@@ -376,7 +378,7 @@ function traverse(value, seen = new Set()) {
   return value;
 }
 ```
-
+### cb中支持新旧值
 但是当前实现，回调函数并没有获取新值和旧值
 
 ```
@@ -408,5 +410,60 @@ function watch(source, cb) {
 ```
 实现如上，通过lazy，然后手动调用一次effectFn，获取初始值，之后scheduler中执行后回去newValue
 
+### 立即执行的watch与回调执行时机
+上面实现，只有数据发生变化时才执行回调，接下来通过添加immediate选项并且为true时，回调函数会立刻执行一次
+```
+// watch接收两个参数，第一个是source响应式数据，第二个是回调函数
+function watch(source, cb, options = {}) {
+  let getter;
+  // 如果参数source是函数，则直接把source作为getter
+  if (typeof source === 'function') {
+    getter = source;
+  } else {
+    // 否则按照原来方式递归读取source的属性
+    getter = () => traverse(source);
+  }
+  let oldValue, newValue;
+  const job = () => {
+    newValue = effectFn();
+    // 当source发生变化时，执行回调函数
+    cb(newValue, oldValue);
+    oldValue = newValue;
+  }
+  const effectFn = effect(
+    () => getter(),
+    {
+      scheduler: job,
+      lazy: true,
+    }
+  );
+  if (options.immediate) {
+    // 当immediate为true时，立即执行一次回调函数
+    job();
+  } else {
+    // 手动调用一次effectFn，获取初始值
+    oldValue = effectFn();
+  }
+} 
+```
+立刻执行和后续执行本质没有区别，所以可以把scheduler调度函数封装为一个通用函数，分别在初始化和后续执行它，第一次执行回调函数时没有所谓的旧值，oldValue为undefined,这也是符合预期的
+
+除了立即执行，还可以指定其他执行时机，例如使用flush选项指定
+```
+watch(() => obj.foo, (newValue, oldValue) => console.log('数据变化了', newValue, oldValue), {
+  flush: 'post',
+});
+```
+其中pre和post分别代表组件更新前和更新后，pre暂时无法模拟，如果是post需要将job放在一个微任务中执行
+```
+scheduler: () => {
+  if (options.flush === 'post') {
+    const p = Peomise.resolve();
+    p.then(job);
+  } else {
+    job();
+  }
+},
+```
 
 

@@ -153,7 +153,7 @@ function computed(getter) {
 }
 
 // watch接收两个参数，第一个是source响应式数据，第二个是回调函数
-function watch(source, cb) {
+function watch(source, cb, options = {}) {
   let getter;
   // 如果参数source是函数，则直接把source作为getter
   if (typeof source === 'function') {
@@ -163,20 +163,33 @@ function watch(source, cb) {
     getter = () => traverse(source);
   }
   let oldValue, newValue;
+  const job = () => {
+    newValue = effectFn();
+    // 当source发生变化时，执行回调函数
+    cb(newValue, oldValue);
+    oldValue = newValue;
+  }
   const effectFn = effect(
     () => getter(),
     {
-      scheduler() {
-        newValue = effectFn();
-        // 当source发生变化时，执行回调函数
-        cb(newValue, oldValue);
-        oldValue = newValue;
+      scheduler: () => {
+        if (options.flush === 'post') {
+          const p = Peomise.resolve();
+          p.then(job);
+        } else {
+          job();
+        }
       },
       lazy: true,
     }
   );
-  // 手动调用一次effectFn，获取初始值
-  oldValue = effectFn();
+  if (options.immediate) {
+    // 当immediate为true时，立即执行一次回调函数
+    job();
+  } else {
+    // 手动调用一次effectFn，获取初始值
+    oldValue = effectFn();
+  }
 } 
 
 function traverse(value, seen = new Set()) {
@@ -214,5 +227,7 @@ function traverse(value, seen = new Set()) {
 // effect(()=> console.log('sumRes', sumRes.value))
 // obj.foo++
 
-watch(() => obj.foo, (newValue, oldValue) => console.log('数据变化了', newValue, oldValue));
+watch(() => obj.foo, (newValue, oldValue) => console.log('数据变化了', newValue, oldValue), {
+  immediate: true,
+});
 obj.foo++;
