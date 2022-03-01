@@ -128,14 +128,17 @@ function trigger(target, key, type) {
 }
 
 
-function createReactive(obj, isShallow = false) {
+function createReactive(obj, isShallow = false, isReadonly = false) {
   return new Proxy(obj, {
     get(target, key, receiver) {
       // 代理对象可以通过raw属性访问原始对象
       if (key === 'raw') {
         return target;
       }
-      track(target, key);
+      // 非只读时才建立响应联系，因为只读不能修改数据，也就不可能触发副作用执行
+      if (!isReadonly) {
+        track(target, key);
+      }
       const res = Reflect.get(target, key, receiver);
       // 如果是浅响应，直接返回原始值
       if (isShallow) {
@@ -144,11 +147,16 @@ function createReactive(obj, isShallow = false) {
       // 得到原始值结果
       if (typeof res === 'object' && res !== null) {
         // 调用reactive方法，将结果转换为响应式对象
-        return reactive(res);
+        return isReadonly ? readonly(res) : reactive(res);
       }
       return res;
     },
     set(target, key, val, receiver) {
+      // 如果只读，打印警告并返回
+      if (isReadonly) {
+        console.warn(`${key} is readonly`);
+        return true;
+      }
       // 获取旧值
       const oldVal = target[key];
       // 属性不存在是新增，存在是修改
@@ -176,6 +184,11 @@ function createReactive(obj, isShallow = false) {
     },
     // 拦截delete操作符
     deleteProperty(target, key) {
+      // 如果只读，打印警告并返回
+      if (isReadonly) {
+        console.warn(`${key} is readonly`);
+        return true;
+      }
       // 检查被操作属性是否是对象自己的属性
       const hadKey = Object.prototype.hasOwnProperty.call(target, key);
       // 完成属性删除
@@ -195,6 +208,14 @@ function reactive(obj) {
 
 function shallowReactive(obj) {
   return createReactive(obj, true);
+}
+
+function readonly(obj) {
+  return createReactive(obj, false, true);
+}
+
+function shallowReadonly(obj) {
+  return createReactive(obj, true, true);
 }
 
 
@@ -331,6 +352,12 @@ function traverse(value, seen = new Set()) {
 // console.log(child.raw === obj);
 // child.bar = 2;
 
-const obj = shallowReactive({ foo: { bar: 1 } });
-effect(() => console.log(obj.foo.bar));
+//测试浅响应
+// const obj = shallowReactive({ foo: { bar: 1 } });
+// effect(() => console.log(obj.foo.bar));
+// obj.foo.bar = 5;
+
+// 测试只读
+const obj = shallowReadonly({ foo: { bar: 1 } });
+effect(() => console.log(obj.foo));
 obj.foo.bar = 5;

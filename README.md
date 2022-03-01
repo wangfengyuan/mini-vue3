@@ -651,4 +651,54 @@ function shallowReactive(obj) {
 }
 ```
 
+## 只读和浅只读
 
+```
+
+function createReactive(obj, isShallow = false, isReadonly = false) {
+  return new Proxy(obj, {
+    get(target, key, receiver) {
+      ...
+      // 非只读时才建立响应联系，因为只读不能修改数据，也就不可能触发副作用执行
+      if (!isReadonly) {
+        track(target, key);
+      }
+      const res = Reflect.get(target, key, receiver);
+      // 如果是浅响应，直接返回原始值
+      if (isShallow) {
+        return res;
+      }
+      // 得到原始值结果
+      if (typeof res === 'object' && res !== null) {
+        // 调用reactive方法，将结果转换为响应式对象
+        return isReadonly ? readonly(res) : reactive(res);
+      }
+      return res;
+    },
+    set(target, key, val, receiver) {
+      // 如果只读，打印警告并返回
+      if (isReadonly) {
+        console.warn(`${key} is readonly`);
+        return true;
+      }
+      ...
+    },
+    // 拦截delete操作符
+    deleteProperty(target, key) {
+      // 如果只读，打印警告并返回
+      if (isReadonly) {
+        console.warn(`${key} is readonly`);
+        return true;
+      }
+    }
+  });
+}
+
+function readonly(obj) {
+  return createReactive(obj, false, true);
+}
+
+function shallowReadonly(obj) {
+  return createReactive(obj, true, true);
+}
+```
