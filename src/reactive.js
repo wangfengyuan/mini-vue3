@@ -150,6 +150,21 @@ function trigger(target, key, type, val) {
   });
 }
 
+const arrayInstrumentations = {};
+
+['includes', 'indexOf', 'lastIndexOf'].forEach(method => {
+  const original = Array.prototype[method];
+  arrayInstrumentations[method] = function(...args) {
+    // this是代理对象，先在代理中查找返回结果
+    let res = original.call(this, ...args);
+    if (res === false || res === -1) {
+      // 如果没有找到，则在原始数组中查找
+      res = original.call(this.raw, ...args);
+    }
+    // 返回最终结果
+    return res;
+  }
+})
 
 function createReactive(obj, isShallow = false, isReadonly = false) {
   return new Proxy(obj, {
@@ -157,6 +172,10 @@ function createReactive(obj, isShallow = false, isReadonly = false) {
       // 代理对象可以通过raw属性访问原始对象
       if (key === 'raw') {
         return target;
+      }
+      // 如果是数组并且arrayInstrumentations中有定义方法，返回arrayInstrumentations中的方法的值
+      if (Array.isArray(target) && arrayInstrumentations.hasOwnProperty(key)) {
+        return Reflect.get(arrayInstrumentations, key, receiver);
       }
       // 添加判断，如果key的类型是Symbol,不进行追踪
       // 非只读时才建立响应联系，因为只读不能修改数据，也就不可能触发副作用执行
@@ -229,8 +248,18 @@ function createReactive(obj, isShallow = false, isReadonly = false) {
   });
 }
 
+// 存储obj到proxy关系
+const reactiveMap = new Map();
+
 function reactive(obj) {
-  return createReactive(obj);
+  const existProxy = reactiveMap.get(obj);
+  // 找到了返回，之前创建过
+  if (existProxy) return existProxy;
+  // 创建代理对象
+  const proxy = createReactive(obj);
+  // 存储proxy到obj关系
+  reactiveMap.set(obj, proxy);
+  return proxy;
 }
 
 function shallowReactive(obj) {
@@ -419,13 +448,17 @@ function traverse(value, seen = new Set()) {
 //   }
 // }
 
-const arr = reactive([1, 2, 3, 4, 5])
+// const arr = reactive([1, 2, 3, 4, 5])
 
-effect(() => {
-  for (const val of arr.values()) {
-    console.log(val)
-  }
-})
+// effect(() => {
+//   for (const val of arr.values()) {
+//     console.log(val)
+//   }
+// })
 
-arr[1] = 'bar'
-arr.length = 1
+// arr[1] = 'bar'
+// arr.length = 1
+const obj = {}
+const arr = reactive([obj]);
+effect(() => console.log(arr.indexOf(obj)))
+

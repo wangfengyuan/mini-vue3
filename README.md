@@ -823,3 +823,68 @@ if (!isReadonly && typeof key !== 'symbol') {
   track(target, key);
 }
 ```
+
+## 数组的查找
+针对数组查找方法，因为也会访问数组长度和索引，所以一般情况都支持，但是特殊情况比如
+```
+const obj = {}
+const arr = reactive([obj]);
+effect(() => console.log(arr.includes(arr[0])))
+```
+上面我们期望返回true但是返回了false, 因为两次获取arr[0]时都调用了
+```
+if (typeof res === 'object' && res !== null) {
+  // 调用reactive方法，将结果转换为响应式对象
+  return isReadonly ? readonly(res) : reactive(res);
+}
+```
+而reactive每次都是返回一个新对象，因此不一样，解决办法如下
+```
+// 存储obj到proxy关系
+const reactiveMap = new Map();
+
+function reactive(obj) {
+  const existProxy = reactiveMap.get(obj);
+  // 找到了返回，之前创建过
+  if (existProxy) return existProxy;
+  // 创建代理对象
+  const proxy = createReactive(obj);
+  // 存储proxy到obj关系
+  reactiveMap.set(obj, proxy);
+  return proxy;
+}
+```
+
+上面问题解决，但是针对
+```
+const obj = {}
+const arr = reactive([obj]);
+effect(() => console.log(arr.includes(obj)))
+```
+上面获取元素数组也是代理对象，和原始对象比较，肯定不一样，如果期望相同需要额外处理，重写includes方法如下
+```
+const arrayInstrumentations = {
+  includes: function(...args) {
+    // this是代理对象，先在代理中查找返回结果
+    let res = Array.prototype.includes.call(this, ...args);
+    if (res === false) {
+      // 如果没有找到，则在原始数组中查找
+      res = Array.prototype.includes.call(this.raw, ...args);
+    }
+    // 返回最终结果
+    return res;
+  }
+}
+
+get(target, key, receiver) {
+  // 代理对象可以通过raw属性访问原始对象
+  if (key === 'raw') {
+    return target;
+  }
+  // 如果是数组并且arrayInstrumentations中有定义方法，返回arrayInstrumentations中的方法的值
+  if (Array.isArray(target) && arrayInstrumentations.hasOwnProperty(key)) {
+    return Reflect.get(arrayInstrumentations, key, receiver);
+  }
+  ...
+}
+```
