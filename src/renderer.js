@@ -40,11 +40,27 @@ function createRenderer(option) {
 
   // n1代表旧node, n2代表新node
   function patch(n1, n2, container) {
-    // 如果n1不存在，意味着挂载，则调用mountElment完成初次挂载
-    if (!n1) {
-      mountElement(n2, container)
-    } else {
-      // n1存在，意味着打补丁，暂时忽略
+    // 如果n1和n2类型不同
+    if (n1 && n1.type !== n2.type) {
+      // 卸载n1
+      unmount(n1);
+      n1 = null;
+    }
+    // 代码运行到这里说明n1和n2类型相同
+    const { type } = n2;
+    // 如果n2是元素节点
+    if (typeof type === 'string') {
+      // 如果n1不存在，意味着挂载，则调用mountElment完成初次挂载
+      if (!n1) {
+        mountElement(n2, container)
+      } else {
+        // n1存在，意味着打补丁，暂时忽略
+        patchElement(n1, n2);
+      }
+    } else if (typeof type === 'object') {
+      // 如果n2 type为对象，则描述的是组件
+    } else if (typeof type === 'xx') {
+      // c处理其他类型的vnode
     }
   }
 
