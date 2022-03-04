@@ -3,8 +3,16 @@ function createRenderer(option) {
   const {
     createElement,
     insert,
-    setElementText
+    setElementText,
+    patchProps,
   } = options;
+
+  function shouldSetAsProps(el, key, value) {
+    // 特殊处理,对于下面这种el.form是只读的，只能通过setAttribute设置
+    // <form id="form1"></form> <input form="form1" />
+    if (key === 'form' && el.tagName === 'INPUT') return false;
+    return key in el;
+  }
 
   function mountElment(vnode, container) {
     const el = createElement(vnode.tag);
@@ -12,6 +20,18 @@ function createRenderer(option) {
     if (typeof vnode.children === 'string') {
       // setElementText设置元素文本
       setElementText(el, vnode.children);
+    } else if (Array.isArray(vnode.children)) {
+      // 如果是数组，递归挂载子节点
+      vnode.children.forEach(child => {
+        mountElment(child, el);
+      })
+    }
+    // 处理props
+    if (vnode.props) {
+      for (const key in vnode.props) {
+        // 调用patchProps方法，更新props
+        patchProps(el, key, null, vnode.props[key]);
+      }
     }
     // 调用insert插入容器
     insert(el, container);
@@ -55,6 +75,22 @@ const renderer = createRenderer({
   },
   createElement(tag) {
     return document.createElement(tag);
+  },
+  patchProps(el, key, preValue, nextValue) {
+    // 判断key是否存在对应的DOM属性
+    if (shouldSetAsProps(el, key, nextValue)) {
+      // 获取该DOM属性的类型
+      const type = typeof el[key];
+      // 如果是布尔类型，并且value是空字符串，则将值矫正为true 比如disabled=""
+      if (type === 'boolean' && nextValue === '') {
+        el[key] = true;
+      } else {
+        el[key] = nextValue;
+      }
+    } else {
+      // 如果不是DOM属性, 则使用setAttribute设置属性
+      el.setAttribute(key, nextValue);
+    }
   }
 })
 
