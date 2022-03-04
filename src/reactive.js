@@ -158,8 +158,9 @@ function createReactive(obj, isShallow = false, isReadonly = false) {
       if (key === 'raw') {
         return target;
       }
+      // 添加判断，如果key的类型是Symbol,不进行追踪
       // 非只读时才建立响应联系，因为只读不能修改数据，也就不可能触发副作用执行
-      if (!isReadonly) {
+      if (!isReadonly && typeof key !== 'symbol') {
         track(target, key);
       }
       const res = Reflect.get(target, key, receiver);
@@ -393,11 +394,38 @@ function traverse(value, seen = new Set()) {
 // effect(() => console.log(arr[1]));
 // arr.length = 2;
 
-const arr = reactive([1, 2, 3]);
+// const arr = reactive([1, 2, 3]);
+// effect(() => {
+//   for(const key in arr) {
+//     console.log(key);
+//   }
+// });
+// arr[1] = 5;
+// arr.length = 2;
+
+// const arr = [1, 2, 3];
+
+// arr[Symbol.iterator] = function() {
+//   const target = this;
+//   const len = target.length;
+//   let index = 0;
+//   return {
+//     next() {
+//       return {
+//         value: index < len ? target[index] : undefined,
+//         done: index++ >= len
+//       }
+//     }
+//   }
+// }
+
+const arr = reactive([1, 2, 3, 4, 5])
+
 effect(() => {
-  for(const key in arr) {
-    console.log(key);
+  for (const val of arr.values()) {
+    console.log(val)
   }
-});
-arr[1] = 5;
-arr.length = 2;
+})
+
+arr[1] = 'bar'
+arr.length = 1

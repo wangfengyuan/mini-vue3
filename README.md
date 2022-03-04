@@ -754,7 +754,9 @@ if (Array.isArray(target) && key === 'length') {
 ```
 
 ### 遍历数组
-只有数组长度变化了，才触发依赖
+
+### for...in循环
+只有数组长度变化了，才触发依赖， 因此跟踪时建立将length作为key建立依赖即可
 ```
 const arr = reactive([1, 2, 3]);
 effect(() => {
@@ -770,4 +772,54 @@ ownKeys(target) {
   track(target, Array.isArray(target) ? 'length': ITERATE_KEY);
   return Reflect.ownKeys(target);
 },
+```
+
+### for...of循环
+
+for...of是用来循环可迭代对象的，可迭代对象指部署了Symbol.iterator方法的对象，都可用for...in遍历
+```
+const obj = {
+  val: 0,
+  [Symbol.iterator]() {
+    return {
+      next() {
+        return {
+          value: obj.val ++ ,
+          done: obj.val > 10
+        }
+      }
+    }
+  }
+}
+
+for(const val of obj) {
+  console.log(val); // 0,1,2,3,4,5,6,7,8,9
+}
+```
+数组内建了Symbol.iterator方法的实现，因此支持for...of遍历，模拟实现如下
+```
+arr[Symbol.iterator] = function() {
+  const target = this;
+  const len = target.length;
+  let index = 0;
+  return {
+    next() {
+      return {
+        value: index < len ? target[index] : undefined,
+        done: index++ >= len
+      }
+    }
+  }
+}
+```
+
+```
+console.log(Array.prototype.values === Array.prototype[Symbol.iterator]) // true
+```
+迭代数组时会访问数组长度和索引，因此目前已经支持for...of和values,但是为了访问Symbol.iterator属性时报错，修改拦截函数，不追踪symbol类型值
+```
+// 添加判断，如果key的类型是Symbol,不进行追踪
+if (!isReadonly && typeof key !== 'symbol') {
+  track(target, key);
+}
 ```
