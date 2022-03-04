@@ -375,6 +375,41 @@ function traverse(value, seen = new Set()) {
   return value;
 }
 
+function ref(val) {
+  // 创建包裹对象
+  const wrapper = {
+    value: val,
+  }
+  // 定义一个不可枚举属性__v_isRef，并且赋值为true
+  Object.defineProperty(wrapper, '__v_isRef', {
+    value: true,
+  })
+  return reactive(wrapper);
+}
+
+function toRef(obj, key) {
+  const wrapper =  {
+    get value() {
+      return obj[key];
+    },
+    set value(val) {
+      obj[key] = val
+    }
+  }
+  Object.defineProperty(wrapper, '__v_isRef', {
+    value: true,
+  })
+  return wrapper;
+}
+
+function toRefs(obj) {
+  const ret = {};
+  for (const key in obj) {
+    ret[key] = toRef(obj, key);
+  }
+  return ret;
+}
+
 // effect(() => console.log(obj.foo), {
 //   scheduler: (effectFn) => {
 //     // 每次调度将副作用函数添加到任务队列中
@@ -480,6 +515,10 @@ function traverse(value, seen = new Set()) {
 // const arr = reactive([obj]);
 // effect(() => console.log(arr.indexOf(obj)))
 
-const arr = reactive([]);
-effect(() => arr.push(1));
-effect(() => arr.push(1));
+// const arr = reactive([]);
+// effect(() => arr.push(1));
+// effect(() => arr.push(1));
+
+const obj = reactive({ foo: 1, bar: 2});
+const refFoo = toRef(obj, 'foo');
+refFoo.value = 100;

@@ -923,3 +923,62 @@ function track(target, key) {
   ...
 }
 ```
+
+## 原始值的响应方案
+
+## ref概念
+proxy不支持对boolean, string, number, null, undefined等类型的值,需要包裹成对象并添加一个__v_isRef属性来判断这是ref类型值
+```
+function ref(val) {
+  // 创建包裹对象
+  const wrapper = {
+    value: val,
+  }
+  // 定义一个不可枚举属性__v_isRef，并且赋值为true
+  Object.defineProperty(wrapper, '__v_isRef', {
+    value: true,
+  })
+  return reactive(wrapper);
+}
+```
+
+## 响应丢失问题
+如下，通过解构返回一个新的对象时会造成响应式丢失
+```
+const obj = reactive({ foo: 1, bar: 2})
+const newObj = {
+  ...obj
+}
+```
+因此需要实现一个toRef函数
+```
+function toRef(obj, key) {
+  const wrapper =  {
+    get value() {
+      return obj[key];
+    },
+    set value(val) {
+      obj[key] = val
+    }
+  }
+  Object.defineProperty(wrapper, '__v_isRef', {
+    value: true,
+  })
+  return wrapper;
+}
+
+const newObj = {
+  foo: toRef(obj, 'foo'),
+  bar: toRef(obj, 'bar'),
+}
+
+function toRefs(obj) {
+  const ret = {};
+  for (const key in obj) {
+    ret[key] = toRef(obj, key);
+  }
+  return ret;
+}
+```
+
+
