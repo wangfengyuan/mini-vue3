@@ -410,6 +410,26 @@ function toRefs(obj) {
   return ret;
 }
 
+function proxyRefs(target) {
+  return new Proxy(target, {
+    get(target, key, receiver) {
+      const value = Reflect.get(target, key, receiver);
+      // 如果读取的是ref返回它的value属性值
+      return value.__v_isRef ? value.value :value;
+    },
+    set(target, key, newValue, receiver) {
+      // 通过target读取真实值
+      const value = target[key];
+      // 如果值是ref，则设置value属性值
+      if (value && value.__v_isRef) {
+        value.value = newValue;
+        return true;
+      }
+      return Reflect.set(target, key, newValue, receiver);
+    }
+  })
+}
+
 // effect(() => console.log(obj.foo), {
 //   scheduler: (effectFn) => {
 //     // 每次调度将副作用函数添加到任务队列中
@@ -520,5 +540,6 @@ function toRefs(obj) {
 // effect(() => arr.push(1));
 
 const obj = reactive({ foo: 1, bar: 2});
-const refFoo = toRef(obj, 'foo');
-refFoo.value = 100;
+const newObj = proxyRefs({...toRefs(obj)});
+
+console.log(newObj.foo);

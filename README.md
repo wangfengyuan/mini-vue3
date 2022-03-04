@@ -981,4 +981,41 @@ function toRefs(obj) {
 }
 ```
 
+## 自动脱ref
+在模板中希望用户
+
+```
+<p>{{ foo }}</p>
+```
+访问而不是
+```
+<p>{{ foo.value }}</p>
+```
+因此需要自动脱ref,实现如下
+```
+function proxyRefs(target) {
+  return new Proxy(target, {
+    get(target, key, receiver) {
+      const value = Reflect.get(target, key, receiver);
+      // 如果读取的是ref返回它的value属性值
+      return value.__v_isRef ? value.value :value;
+    },
+    set(target, key, newValue, receiver) {
+      // 通过target读取真实值
+      const value = target[key];
+      // 如果值是ref，则设置value属性值
+      if (value && value.__v_isRef) {
+        value.value = newValue;
+        return true;
+      }
+      return Reflect.set(target, key, newValue, receiver);
+    }
+  })
+}
+const obj = reactive({ foo: 1, bar: 2});
+const newObj = proxyRefs({...toRefs(obj)});
+
+console.log(newObj.foo);
+```
+实际组件中，组件中setup返回的数据会传递给proxyRefs函数进行处理，这也是为什么模板中可以直接访问一个ref值而无须通过value属性访问
 
