@@ -78,7 +78,8 @@ function effect(fn, options = {}) {
 const data = { ok: true, text: 'hello world', foo: 1 };
 
 function track(target, key) {
-  if (!activeEffect) return;
+  // 当禁止追踪时直接返回
+  if (!activeEffect || !shouldTrack) return;
   let depsMap = bucket.get(target);
   if (!depsMap) {
     bucket.set(target, (depsMap = new Map()));
@@ -161,6 +162,23 @@ const arrayInstrumentations = {};
       // 如果没有找到，则在原始数组中查找
       res = original.call(this.raw, ...args);
     }
+    // 返回最终结果
+    return res;
+  }
+})
+
+// 一个标记，代表是否进行追踪
+let shouldTrack = true;
+
+['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].forEach(method => {
+  const original = Array.prototype[method];
+  arrayInstrumentations[method] = function(...args) {
+    // 调用原始方法之前，禁止追踪
+    shouldTrack = false;
+    // push等函数默认行为
+    let res = original.call(this, ...args);
+    // 开启追踪
+    shouldTrack = true;
     // 返回最终结果
     return res;
   }
@@ -458,7 +476,10 @@ function traverse(value, seen = new Set()) {
 
 // arr[1] = 'bar'
 // arr.length = 1
-const obj = {}
-const arr = reactive([obj]);
-effect(() => console.log(arr.indexOf(obj)))
+// const obj = {}
+// const arr = reactive([obj]);
+// effect(() => console.log(arr.indexOf(obj)))
 
+const arr = reactive([]);
+effect(() => arr.push(1));
+effect(() => arr.push(1));

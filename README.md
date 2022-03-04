@@ -888,3 +888,38 @@ get(target, key, receiver) {
   ...
 }
 ```
+
+## 隐式修改数组长度的原型方法
+
+包括push/pop/shift/unshift/splice，这些方法即会读取length属性值也会设置length,这会导致两个独立的副作用函数互相影响，比如
+```
+const arr = reactive([]);
+effect(() => arr.push(1));
+effect(() => arr.push(1));
+```
+上述会导致栈溢出，第一次读取length时，副作用函数已经合length建立了联系，第二次push的时候，不仅读取还会设置length的值，于是第二个函数还未执行完边去执行第一个函数
+解决办法是push时我们屏蔽对length的读取，避免与副作用函数建立联系，这个思路是正确的，因为push时我们是在修改操作而非读取
+```
+// 一个标记，代表是否进行追踪
+let shouldTrack = true;
+
+['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].forEach(method => {
+  const original = Array.prototype[method];
+  arrayInstrumentations[method] = function(...args) {
+    // 调用原始方法之前，禁止追踪
+    shouldTrack = false;
+    // push等函数默认行为
+    let res = original.call(this, ...args);
+    // 开启追踪
+    shouldTrack = true;
+    // 返回最终结果
+    return res;
+  }
+})
+
+function track(target, key) {
+  // 当禁止追踪时直接返回
+  if (!activeEffect || !shouldTrack) return;
+  ...
+}
+```
