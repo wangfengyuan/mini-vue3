@@ -95,7 +95,16 @@ function createRenderer(options) {
             patch(oldNode, newNode, container);
             if (j < lastIndex) {
               // 说明该节点对应的真实DOM需要移动
-              console.log('move', j, oldNode.key);
+              // 获取newChildren前一个vnode,即preVNode
+              const preVNode = newChildren[i - 1];
+              // 如果preVNode不存在，说明当前newVNode是第一个节点，不需要移动
+              if (preVNode) {
+                // 由于要将newVNode对应的真实DOM移动到preVNode对应的真实DOM后面
+                // 所以先获取preVNode对应的下一个兄弟节点
+                const anchor = preVNode.el.nextSibling;
+                // 调用insert将newVNode对应的真实DOM插入到anchor后面
+                insert(newNode.el, container, anchor);
+              }
             } else {
               // 如果大于lastIndex则更新
               lastIndex = j;
