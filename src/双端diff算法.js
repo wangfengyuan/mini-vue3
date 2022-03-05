@@ -136,13 +136,19 @@ function createRenderer(options) {
       }
     }
     // 循环后继续检查是否有遗漏的需要新增的节点
-    while(oldEndIndex < oldStartIndex && newStartIndex <= newEndIndex) {
+    if (oldEndIndex < oldStartIndex && newStartIndex <= newEndIndex) {
+      // 添加新节点
       for (let i = newStartIndex; i <= newEndIndex; i++) {
-        patch(null, newChildren[i], container, oldStartVnode.el);
-        // 处理完记得更新索引，这样才能适当时候跳出while循环
-        newStartVnode = newChildren[++newStartIndex];
+        patch(null, newChildren[i], container, oldStartVnode.el)
+      }
+    } else if (newEndIndex < newStartIndex && oldStartIndex <= oldEndIndex) {
+      // 移除操作
+      for (let i = oldStartIndex; i <= oldEndIndex; i++) {
+        unmount(oldChildren[i])
       }
     }
+
+
   }
 
   function patchChildren(n1, n2, container) {
@@ -334,9 +340,7 @@ renderer.render(oldVnode, document.querySelector('#app'))
 const newVnode = {
   type: 'div',
   children: [
-    { type: 'p', children: '4', key: 4 },
     { type: 'p', children: '1', key: 1 },
-    { type: 'p', children: '2', key: 2 },
     { type: 'p', children: '3', key: 3 },
   ]
 }
