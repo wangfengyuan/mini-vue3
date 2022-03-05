@@ -86,8 +86,12 @@ function createRenderer(options) {
     let newEndVnode = newChildren[newEndIndex];
 
     while(newStartIndex <= newEndIndex && oldStartIndex <= oldEndIndex) {
-
-      if (oldStartVnode.key === newStartVnode.key) {
+      // 因为移动后有置为undefined的情况，所以需要判断是否为undefined, 如果是undefined，则跳过
+      if (!oldStartVnode) {
+        oldStartVnode = oldChildren[++oldStartIndex];
+      } else if (!oldEndVnode) {
+        oldEndVnode = oldChildren[--oldEndIndex];
+      } else if (oldStartVnode.key === newStartVnode.key) {
         // 第一步： oldStartVnode和newStartVnode比较
         patch(oldStartVnode, newStartVnode, container);
         oldStartVnode = oldChildren[++oldStartIndex];
@@ -114,6 +118,18 @@ function createRenderer(options) {
         newStartVnode = newChildren[++newStartIndex];
       } else {
         // 四次比较均不相同
+        // 遍历旧的子节点，视图寻找和newStartVnode拥有相同key的节点
+        const idxInOld = oldChildren.findIndex(vnode => vnode.key === newStartVnode.key);
+        // 如果idxInOld 大于 -1，说明找到了，需要将对应的真实DOM移动到头部
+        if (idxInOld > -1) {
+          // 如果找到了，则更新
+          const vnodeToMove = oldChildren[idxInOld];
+          patch(vnodeToMove, newStartVnode, container);
+          insert(vnodeToMove.el, container, oldStartVnode.el);
+          // 因为已经移动到了其他位置，需要改为undefined
+          oldChildren[idxInOld] = undefined;
+          newStartVnode = newChildren[++newStartIndex];
+        }
       }
     }
   }
@@ -308,8 +324,8 @@ renderer.render(oldVnode, document.querySelector('#app'))
 const newVnode = {
   type: 'div',
   children: [
-    { type: 'p', children: '4', key: 4 },
     { type: 'p', children: '2', key: 2 },
+    { type: 'p', children: '4', key: 4 },
     { type: 'p', children: '1', key: 1 },
     { type: 'p', children: '3', key: 3 }
   ]
