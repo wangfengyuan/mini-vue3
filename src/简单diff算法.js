@@ -83,26 +83,15 @@ function createRenderer(options) {
       // 将新的文本内容设置给容器元素
       setElementText(container, newChildren);
     } else if (Array.isArray(newChildren)) {
-      // 旧的一组子节点的长度
-      const oldLen = oldChildren.length;
-      // 新的一组子节点的长度
-      const newLen = newChildren.length;
-      // 两者中较短的那一组节点的长度
-      const commonLength = Math.min(oldLen, newLen);
-      for (let i = 0; i < commonLength; i++) {
-        // 调用patch完成子节点更新
-        patch(oldChildren[i], newChildren[i], container);
-      }
-      // 如果newLen > oldLen说明有新子节点需要挂载
-      if (newLen > oldLen) {
-        // 新的一组子节点的长度大于旧的一组子节点的长度，需要挂载新的一组子节点
-        for (let i = commonLength; i < newLen; i++) {
-          patch(null, newChildren[i], container);
-        }
-      } else if (oldLen > newLen) {
-        // 如果oldLen > newLen说明有旧子节点需要挂载
-        for (let i = commonLength; i < oldLen; i++) {
-          unmount(oldChildren[i]);
+      for (let i = 0; i < newChildren.length; i++) {
+        const newNode = newChildren[i];
+        for (let j = 0; j < oldChildren.length; j++) {
+          const oldNode = oldChildren[j];
+          // 如果找到了相同key的节点，说明可以复用，使用patch更新
+          if (newNode.key === oldNode.key) {
+            patch(oldNode, newNode, container);
+            break;
+          }
         }
       }
     } else {
@@ -271,9 +260,9 @@ const renderer = createRenderer({
 const oldVnode = {
   type: 'div',
   children: [
-    { type: 'p', children: '1' },
-    { type: 'p', children: '2' },
-    { type: 'p', children: '3' },
+    { type: 'p', children: '1', key: 1 },
+    { type: 'p', children: '2', key: 2 },
+    { type: 'p', children: 'hello', key: 3 }
   ]
 }
 renderer.render(oldVnode, document.querySelector('#app'))
@@ -281,8 +270,9 @@ renderer.render(oldVnode, document.querySelector('#app'))
 const newVnode = {
   type: 'div',
   children: [
-    { type: 'p', children: '4' },
-    { type: 'p', children: '5' },
+    { type: 'p', children: 'world', key: 3 },
+    { type: 'p', children: '1', key: 1 },
+    { type: 'p', children: '2', key: 2 }
   ]
 }
 
