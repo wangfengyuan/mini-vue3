@@ -108,10 +108,29 @@ function createRenderer(options) {
       while(j <=newEnd) {
         patch(null, newChildren[j++], container, anchor);
       }
-    } else if (j > newEnd %% j < oldEnd) {
+    } else if (j > newEnd && j < oldEnd) {
       // j-->oldEnd之间的节点需要删除
       while(j <= oldEnd) {
         unmount(oldChildren[j++]);
+      }
+    } else {
+      // 处理非理想情况
+      // 构造source数组，长度为新的一组子节点中剩余未处理的数量
+      const count = newEnd - j + 1;
+      const source = new Array(count);
+      source.fill(-1);
+      // 接下来填充source, 对应值为该节点在oldChildren中的索引
+      const oldStart = j;
+      const newStart = j;
+      for (let i = oldStart; i <= oldEnd; i++) {
+        const oldVNode = oldChildren[i];
+        for(let k = newStart; k <= newEnd; k++) {
+          const newVNode = newChildren[k];
+          if (oldVNode.key === newVNode.key) {
+            source[k - newStart] = i;
+            break;
+          }
+        }
       }
     }
   }
