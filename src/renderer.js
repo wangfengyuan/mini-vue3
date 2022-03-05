@@ -104,21 +104,40 @@ const renderer = createRenderer({
   },
   patchProps(el, key, preValue, nextValue) {
     if (/^on/.test(key)) {
+      // el._vei为一个对象，存储事件名称到事件处理函数的映射
+      let invokers = el._vei || (el._vei = {});
+      // 获取为该元素伪造的事件处理函数invoker
+      let invoker = invokers[key];
       // 根据属性名获取事件名称，例如onClick ---> click
       const name = key.slice(2).toLowerCase();
-      // 如果preValue不为空，则说明是删除事件，调用removeEventListener
-      if (preValue) {
-        el.removeEventListener(name, preValue);
-      }
-      // 如果nextValue不为空，则说明是新增事件，调用addEventListener
       if (nextValue) {
-        el.addEventListener(name, nextValue);
+        if (!invoker) {
+          // 如果invoker不存在，则创建一个伪造的invoker并缓存到el._vei
+          invoker = el._vei[key] = function (e) {
+            if (Array.isArray(invoker)) {
+              /**
+               * 处理如下结构
+               * props： {
+               *  onClick: [fn1, fn2, fn3]}
+               */
+              invoker.value.forEach(fn => fn(e));
+            } else {
+              // 调用真正的事件处理函数
+              invoker.value(e);
+            }
+          };
+          // 真正的事件处理函数赋值给invoker.value
+          invoker.value = nextValue;
+          el.addEventListener(name, invoker);
+        } else {
+          // 如果invoker存在，则更新invoker.value,更新时省去了removeEventListener和addEventListener
+          invoker.value = nextValue;
+        }
+      } else if (invoker) {
+        el.removeEventListener(name, invoker);
       }
-    }
-
-    }
-    // 对class进行特殊处理，因为className效率最高
-    if (key === 'class') {
+    } else if (key === 'class') {
+      // 对class进行特殊处理，因为className效率最高
       el.className = nextValue;
     } else if (shouldSetAsProps(el, key, nextValue)) {
       // 判断key是否存在对应的DOM属性
