@@ -122,6 +122,11 @@ function createRenderer(options) {
       // 接下来填充source, 对应值为该节点在oldChildren中的索引
       const oldStart = j;
       const newStart = j;
+      // 新增两个变量 moved 和 pos
+      let moved = false;
+      let pos = 0;
+      // 新增patched变量代表更新过的数量
+      let patched = 0;
       // 构建索引表, 建立节点key --> 位于新节点中的索引的映射
       const keyIndex = {};
       for (let i = newStart; i <= newEnd; i++) {
@@ -129,15 +134,29 @@ function createRenderer(options) {
       }
       for (let i = oldStart; i <= oldEnd; i++) {
         const oldVNode = oldChildren[i];
-        // 通过索引表快速找到新的一组子节点中具有相同key值的节点位置
-        const k = keyIndex[oldVNode.key];
-        if (typeof k !== 'undefined') {
-          // 找到了，进行patch并更新source
-          newVNode = newChildren[k];
-          patch(oldVNode, newVNode, container);
-          source[k - newStart] = i;
+        if (patched <= count) {
+          // 通过索引表快速找到新的一组子节点中具有相同key值的节点位置
+          const k = keyIndex[oldVNode.key];
+          if (typeof k !== 'undefined') {
+            // 找到了，进行patch并更新source
+            newVNode = newChildren[k];
+            patch(oldVNode, newVNode, container);
+            source[k - newStart] = i;
+            // 每更新一个节点，patched+1
+            patched++;
+            // 判断节点是否需要移动
+            // 和简单diff算法一样，如果pos呈现递增趋势则不需要移动，否则需要
+            if (k < pos) {
+              moved = true;
+            } else {
+              pos = k;
+            }
+          } else {
+            // 没找到可复用的，卸载
+            unmount(oldVNode);
+          }
         } else {
-          // 没找到可复用的，卸载
+          // 如果更新过的节点数量大于需要更新的数量，则卸载多于节点
           unmount(oldVNode);
         }
       }
