@@ -83,19 +83,27 @@ function createRenderer(options) {
       // 将新的文本内容设置给容器元素
       setElementText(container, newChildren);
     } else if (Array.isArray(newChildren)) {
-      // 新子节点为一组子节点
-
-      // 判断旧子节点是否也是一组子节点
-      if (Array.isArray(oldChildren)) {
-        // 到这里说明新旧子节点都是一组子节点，这里设计最核心的Diff算法
-        // 暂时处理方法： 卸载全部旧节点，挂载新节点
-        oldChildren.forEach(c => unmount(c));
-        newChildren.forEach(c => patch(null, c, container));
-      } else {
-        // 旧子节点要么是文本子节点要么为空
-        // 将容器清空，然后将新的子节点逐个挂载
-        setElementText(container, '');
-        newChildren.forEach(c => patch(null, c, container));
+      // 旧的一组子节点的长度
+      const oldLen = oldChildren.length;
+      // 新的一组子节点的长度
+      const newLen = newChildren.length;
+      // 两者中较短的那一组节点的长度
+      const commonLength = Math.min(oldLen, newLen);
+      for (let i = 0; i < commonLength; i++) {
+        // 调用patch完成子节点更新
+        patch(oldChildren[i], newChildren[i], container);
+      }
+      // 如果newLen > oldLen说明有新子节点需要挂载
+      if (newLen > oldLen) {
+        // 新的一组子节点的长度大于旧的一组子节点的长度，需要挂载新的一组子节点
+        for (let i = commonLength; i < newLen; i++) {
+          patch(null, newChildren[i], container);
+        }
+      } else if (oldLen > newLen) {
+        // 如果oldLen > newLen说明有旧子节点需要挂载
+        for (let i = commonLength; i < oldLen; i++) {
+          unmount(oldChildren[i]);
+        }
       }
     } else {
       // 代码运行到这里说明新子节点不存在
@@ -260,70 +268,25 @@ const renderer = createRenderer({
   }
 })
 
-
-// const oldVnode = {
-//   type: 'div',
-//   children: 'test'
-// }
-// renderer.render(oldVnode, document.querySelector('#app'))
-
-// const newVnode = {
-//   type: 'div',
-//   children: [
-//     {
-//       type: 'span',
-//       children: 'hello'
-//     },
-//     {
-//       type: 'p',
-//       children: 'world'
-//     },
-//   ]
-// }
-// renderer.render(newVnode, document.querySelector('#app'))
-
-// const newVnode = {
-//   type: Text,
-//   children: 'Some Text'
-// }
-// renderer.render(newVnode, document.querySelector('#app'))
-
-// const oldVnode = {
-//   type: Text,
-//   children: 'Some Text2666666'
-// }
-// renderer.render(oldVnode, document.querySelector('#app'))
-
-
 const oldVnode = {
   type: 'div',
   children: [
-    {
-      type: Fragment,
-      children: [
-        { type: 'p', children: 'text 1' },
-        { type: 'p', children: 'text 2' },
-        { type: 'p', children: 'text 3' },
-        { type: 'p', children: 'text 4' }
-      ]
-    }
+    { type: 'p', children: '1' },
+    { type: 'p', children: '2' },
+    { type: 'p', children: '3' },
   ]
 }
 renderer.render(oldVnode, document.querySelector('#app'))
 
-
 const newVnode = {
   type: 'div',
   children: [
-    {
-      type: Fragment,
-      children: [
-        { type: 'p', children: 'text 1' },
-        { type: 'p', children: 'text 2' },
-        { type: 'p', children: 'text 3' }
-      ]
-    },
-    { type: 'section', children: '分割线' }
+    { type: 'p', children: '4' },
+    { type: 'p', children: '5' },
   ]
 }
-renderer.render(newVnode, document.querySelector('#app'))
+
+setTimeout(() => {
+  console.log('update')
+  renderer.render(newVnode, document.querySelector('#app'))
+}, 400);
