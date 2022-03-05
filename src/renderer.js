@@ -103,6 +103,20 @@ const renderer = createRenderer({
     return document.createElement(tag);
   },
   patchProps(el, key, preValue, nextValue) {
+    if (/^on/.test(key)) {
+      // 根据属性名获取事件名称，例如onClick ---> click
+      const name = key.slice(2).toLowerCase();
+      // 如果preValue不为空，则说明是删除事件，调用removeEventListener
+      if (preValue) {
+        el.removeEventListener(name, preValue);
+      }
+      // 如果nextValue不为空，则说明是新增事件，调用addEventListener
+      if (nextValue) {
+        el.addEventListener(name, nextValue);
+      }
+    }
+
+    }
     // 对class进行特殊处理，因为className效率最高
     if (key === 'class') {
       el.className = nextValue;
