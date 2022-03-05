@@ -38,6 +38,65 @@ function createRenderer(option) {
     insert(el, container);
   }
 
+  function patchElment(n1, n2) {
+    // patch时 新vnode的el引用旧vnode的el，这样就可以更新el
+    const el = n2.el = n1.el;
+    const oldProps = n1.props;
+    const newProps = n2.props;
+    // 第一步更新props
+    for (const key in newProps) {
+      if (oldProps[key] !== newProps[key]) {
+        patchProps(el, key, oldProps[key], newProps[key]);
+      }
+    }
+    for (const key in oldProps) {
+      if (!(key in newProps)) {
+        patchProps(el, key, oldProps[key], null);
+      }
+    }
+    // 第二步更新children
+    patchChildren(n1, n2, el);
+  }
+
+  function patchChildren(n1, n2, container) {
+    const oldChildren = n1.children;
+    const newChildren = n2.children;
+    // 如果新旧节点都是字符串，则更新文本
+    if (typeof newChildren === 'string') {
+      // 旧子节点为一组时逐个卸载
+      if (Array.isArray(oldChildren)) {
+        oldChildren.forEach(c => unmount(c));
+      }
+      // 将新的文本内容设置给容器元素
+      setElementText(container, newChildren);
+    } else if (Array.isArray(newChildren)) {
+      // 新子节点为一组子节点
+
+      // 判断旧子节点是否也是一组子节点
+      if (Array.isArray(oldChildren)) {
+        // 到这里说明新旧子节点都是一组子节点，这里设计最核心的Diff算法
+        // 暂时处理方法： 卸载全部旧节点，挂载新节点
+        oldChildren.forEach(c => unmount(c));
+        newChildren.forEach(c => patch(null, c, container));
+      } else {
+        // 旧子节点要么是文本子节点要么为空
+        // 将容器清空，然后将新的子节点逐个挂载
+        setElementText(container, '');
+        newChildren.forEach(c => patch(null, c, container));
+      }
+    } else {
+      // 代码运行到这里说明新子节点不存在
+      if (Array.isArray(oldChildren)) {
+        // 将旧子节点逐个卸载
+        oldChildren.forEach(c => unmount(c));
+      } else if (typeof oldChildren === 'string') {
+        // 将容器清空
+        setElementText(container, '');
+      } 
+      // 如果没有旧子节点，什么也不做
+    }
+  }
+
   // n1代表旧node, n2代表新node
   function patch(n1, n2, container) {
     // 如果n1和n2类型不同
