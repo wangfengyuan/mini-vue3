@@ -122,14 +122,23 @@ function createRenderer(options) {
       // 接下来填充source, 对应值为该节点在oldChildren中的索引
       const oldStart = j;
       const newStart = j;
+      // 构建索引表, 建立节点key --> 位于新节点中的索引的映射
+      const keyIndex = {};
+      for (let i = newStart; i <= newEnd; i++) {
+        keyIndex[newChildren[i].key] = i;
+      }
       for (let i = oldStart; i <= oldEnd; i++) {
         const oldVNode = oldChildren[i];
-        for(let k = newStart; k <= newEnd; k++) {
-          const newVNode = newChildren[k];
-          if (oldVNode.key === newVNode.key) {
-            source[k - newStart] = i;
-            break;
-          }
+        // 通过索引表快速找到新的一组子节点中具有相同key值的节点位置
+        const k = keyIndex[oldVNode.key];
+        if (typeof k !== 'undefined') {
+          // 找到了，进行patch并更新source
+          newVNode = newChildren[k];
+          patch(oldVNode, newVNode, container);
+          source[k - newStart] = i;
+        } else {
+          // 没找到可复用的，卸载
+          unmount(oldVNode);
         }
       }
     }
