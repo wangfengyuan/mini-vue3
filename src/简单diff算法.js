@@ -130,6 +130,18 @@ function createRenderer(options) {
           patch(null, newVnode, container, anchor);
         }
       }
+      // 遍历旧的节点
+      for (let i = 0; i < oldChildren.length; i++) {
+        const oldVNode = oldChildren[i]
+        // 拿着旧 VNode 去新 children 中寻找相同的节点
+        const has = newChildren.find(
+          vnode => vnode.key === oldVNode.key
+        )
+        if (!has) {
+          // 如果没有找到相同的节点，则移除
+          unmount(oldVNode)
+        }
+      }
     } else {
       // 代码运行到这里说明新子节点不存在
       if (Array.isArray(oldChildren)) {
@@ -306,8 +318,6 @@ renderer.render(oldVnode, document.querySelector('#app'))
 const newVnode = {
   type: 'div',
   children: [
-    { type: 'p', children: '4', key: 4 },
-    { type: 'p', children: 'world', key: 3 },
     { type: 'p', children: '1', key: 1 },
     { type: 'p', children: '2', key: 2 }
   ]
