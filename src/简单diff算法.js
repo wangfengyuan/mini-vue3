@@ -83,6 +83,9 @@ function createRenderer(options) {
       // 将新的文本内容设置给容器元素
       setElementText(container, newChildren);
     } else if (Array.isArray(newChildren)) {
+      // 存储寻找过程中遇到的最大索引值，如果新节点在对应的旧节点的索引比如，0，1，2，升序的代表顺序不需要移动
+      // 否则比如，2，1，0，需要移动，说明对应1、0索引的新节点，在旧节点中位于2的前面，但是新节点时位于2的后面，因此这两个需要移动
+      let lastIndex = 0;
       for (let i = 0; i < newChildren.length; i++) {
         const newNode = newChildren[i];
         for (let j = 0; j < oldChildren.length; j++) {
@@ -90,6 +93,13 @@ function createRenderer(options) {
           // 如果找到了相同key的节点，说明可以复用，使用patch更新
           if (newNode.key === oldNode.key) {
             patch(oldNode, newNode, container);
+            if (j < lastIndex) {
+              // 说明该节点对应的真实DOM需要移动
+              console.log('move', j, oldNode.key);
+            } else {
+              // 如果大于lastIndex则更新
+              lastIndex = j;
+            }
             break;
           }
         }
