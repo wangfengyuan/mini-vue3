@@ -128,8 +128,19 @@ function createRenderer(options) {
           insert(vnodeToMove.el, container, oldStartVnode.el);
           // 因为已经移动到了其他位置，需要改为undefined
           oldChildren[idxInOld] = undefined;
-          newStartVnode = newChildren[++newStartIndex];
+        } else {
+          // 如果没有找到，则插入到旧子节点头部节点的前面
+          patch(null, newStartVnode, container, oldStartVnode.el);
         }
+        newStartVnode = newChildren[++newStartIndex];
+      }
+    }
+    // 循环后继续检查是否有遗漏的需要新增的节点
+    while(oldEndIndex < oldStartIndex && newStartIndex <= newEndIndex) {
+      for (let i = newStartIndex; i <= newEndIndex; i++) {
+        patch(null, newChildren[i], container, oldStartVnode.el);
+        // 处理完记得更新索引，这样才能适当时候跳出while循环
+        newStartVnode = newChildren[++newStartIndex];
       }
     }
   }
@@ -316,7 +327,6 @@ const oldVnode = {
     { type: 'p', children: '1', key: 1 },
     { type: 'p', children: '2', key: 2 },
     { type: 'p', children: '3', key: 3 },
-    { type: 'p', children: '4', key: 4 }
   ]
 }
 renderer.render(oldVnode, document.querySelector('#app'))
@@ -324,10 +334,10 @@ renderer.render(oldVnode, document.querySelector('#app'))
 const newVnode = {
   type: 'div',
   children: [
-    { type: 'p', children: '2', key: 2 },
     { type: 'p', children: '4', key: 4 },
     { type: 'p', children: '1', key: 1 },
-    { type: 'p', children: '3', key: 3 }
+    { type: 'p', children: '2', key: 2 },
+    { type: 'p', children: '3', key: 3 },
   ]
 }
 
