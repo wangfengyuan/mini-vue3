@@ -27,7 +27,7 @@ function createRenderer(options) {
     if (parent) parent.removeChild(el);
   }
 
-  function mountElement(vnode, container) {
+  function mountElement(vnode, container, anchor) {
     const el = vnode.el = createElement(vnode.type);
     // 如果子节点为字符串，代表元素具有文本节点
     if (typeof vnode.children === 'string') {
@@ -48,7 +48,7 @@ function createRenderer(options) {
       }
     }
     // 调用insert插入容器
-    insert(el, container);
+    insert(el, container, anchor);
   }
 
   function patchElement(n1, n2) {
@@ -87,12 +87,16 @@ function createRenderer(options) {
       // 否则比如，2，1，0，需要移动，说明对应1、0索引的新节点，在旧节点中位于2的前面，但是新节点时位于2的后面，因此这两个需要移动
       let lastIndex = 0;
       for (let i = 0; i < newChildren.length; i++) {
-        const newNode = newChildren[i];
+        const newVnode = newChildren[i];
+        // 代表是否在旧子节点中找到了可复用的节点
+        let find = false;
         for (let j = 0; j < oldChildren.length; j++) {
-          const oldNode = oldChildren[j];
+          const oldVNode = oldChildren[j];
           // 如果找到了相同key的节点，说明可以复用，使用patch更新
-          if (newNode.key === oldNode.key) {
-            patch(oldNode, newNode, container);
+          if (newVnode.key === oldVNode.key) {
+            // 如果找到，赋值find true
+            find = true;
+            patch(oldVNode, newVnode, container);
             if (j < lastIndex) {
               // 说明该节点对应的真实DOM需要移动
               // 获取newChildren前一个vnode,即preVNode
@@ -103,7 +107,7 @@ function createRenderer(options) {
                 // 所以先获取preVNode对应的下一个兄弟节点
                 const anchor = preVNode.el.nextSibling;
                 // 调用insert将newVNode对应的真实DOM插入到anchor后面
-                insert(newNode.el, container, anchor);
+                insert(newVnode.el, container, anchor);
               }
             } else {
               // 如果大于lastIndex则更新
@@ -111,6 +115,19 @@ function createRenderer(options) {
             }
             break;
           }
+        }
+        // 如果代码运行到这，find仍然为false，说明没有找到相同key的节点，需要新建
+        if (!find) {
+          const preVNode = newChildren[i - 1];
+          let anchor = null;
+          if (preVNode) {
+            anchor = preVNode.el.nextSibling;
+          } else {
+            // 没有preVNode说明第一个元素就是需要新增的元素
+            anchor = container.firstChild;
+          }
+          // 挂载
+          patch(null, newVnode, container, anchor);
         }
       }
     } else {
@@ -127,7 +144,7 @@ function createRenderer(options) {
   }
 
   // n1代表旧node, n2代表新node
-  function patch(n1, n2, container) {
+  function patch(n1, n2, container, anchor) {
     // 如果n1和n2类型不同
     if (n1 && n1.type !== n2.type) {
       // 卸载n1
@@ -140,7 +157,7 @@ function createRenderer(options) {
     if (typeof type === 'string') {
       // 如果n1不存在，意味着挂载，则调用mountElement完成初次挂载
       if (!n1) {
-        mountElement(n2, container)
+        mountElement(n2, container, anchor)
       } else {
         // n1存在，意味着打补丁，暂时忽略
         patchElement(n1, n2);
@@ -150,7 +167,7 @@ function createRenderer(options) {
       if (!n1) {
         // 挂载
         const el = n2.el = createText(n2.children);
-        insert(el, container);
+        insert(el, container, anchor);
       } else {
         const el = n2.el = n1.el;
         if (n2.children !== n1.children) {
@@ -289,6 +306,7 @@ renderer.render(oldVnode, document.querySelector('#app'))
 const newVnode = {
   type: 'div',
   children: [
+    { type: 'p', children: '4', key: 4 },
     { type: 'p', children: 'world', key: 3 },
     { type: 'p', children: '1', key: 1 },
     { type: 'p', children: '2', key: 2 }
