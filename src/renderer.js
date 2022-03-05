@@ -1,10 +1,16 @@
-function createRenderer(option) {
+// 文本节点和注释节点没有对应的type标识, 主动生成一个
+const Text = Symbol();
+const Comment = Symbol();
+
+function createRenderer(options) {
   // 通过options得到操作DOM的方法
   const {
     createElement,
     insert,
     setElementText,
     patchProps,
+    createText,
+    setText,
   } = options;
 
   function unmount(vnode) {
@@ -15,8 +21,8 @@ function createRenderer(option) {
     if (parent) parent.removeChild(el);
   }
 
-  function mountElment(vnode, container) {
-    const el = vnode.el = createElement(vnode.tag);
+  function mountElement(vnode, container) {
+    const el = vnode.el = createElement(vnode.type);
     // 如果子节点为字符串，代表元素具有文本节点
     if (typeof vnode.children === 'string') {
       // setElementText设置元素文本
@@ -24,7 +30,7 @@ function createRenderer(option) {
     } else if (Array.isArray(vnode.children)) {
       // 如果是数组，递归挂载子节点
       vnode.children.forEach(child => {
-        mountElment(child, el);
+        mountElement(child, el);
       })
     }
     // 处理props
@@ -38,7 +44,7 @@ function createRenderer(option) {
     insert(el, container);
   }
 
-  function patchElment(n1, n2) {
+  function patchElement(n1, n2) {
     // patch时 新vnode的el引用旧vnode的el，这样就可以更新el
     const el = n2.el = n1.el;
     const oldProps = n1.props;
@@ -109,12 +115,25 @@ function createRenderer(option) {
     const { type } = n2;
     // 如果n2是元素节点
     if (typeof type === 'string') {
-      // 如果n1不存在，意味着挂载，则调用mountElment完成初次挂载
+      // 如果n1不存在，意味着挂载，则调用mountElement完成初次挂载
       if (!n1) {
         mountElement(n2, container)
       } else {
         // n1存在，意味着打补丁，暂时忽略
         patchElement(n1, n2);
+      }
+    } else if (type === Text) {
+      // 如果新vnode类型为Text说明是文本节点
+      if (!n1) {
+        // 挂载
+        const el = n2.el = createText(n2.children);
+        insert(el, container);
+      } else {
+        const el = n2.el = n1.el;
+        if (n2.children !== n1.children) {
+          // 如果文本节点内容不一致，setText更新内容
+          setText(el, n2.children);
+        }
       }
     } else if (typeof type === 'object') {
       // 如果n2 type为对象，则描述的是组件
@@ -160,6 +179,12 @@ const renderer = createRenderer({
   },
   createElement(tag) {
     return document.createElement(tag);
+  },
+  createText(text) {
+    return document.createTextNode(text);
+  },
+  setText(el, text) {
+    el.nodeValue = text;
   },
   patchProps(el, key, preValue, nextValue) {
     if (/^on/.test(key)) {
@@ -219,3 +244,36 @@ const renderer = createRenderer({
   }
 })
 
+
+const oldVnode = {
+  type: 'div',
+  children: 'test'
+}
+renderer.render(oldVnode, document.querySelector('#app'))
+
+const newVnode = {
+  type: 'div',
+  children: [
+    {
+      type: 'span',
+      children: 'hello'
+    },
+    {
+      type: 'p',
+      children: 'world'
+    },
+  ]
+}
+renderer.render(newVnode, document.querySelector('#app'))
+
+// const newVnode = {
+//   type: Text,
+//   children: 'Some Text'
+// }
+// renderer.render(newVnode, document.querySelector('#app'))
+
+// const oldVnode = {
+//   type: Text,
+//   children: 'Some Text2666666'
+// }
+// renderer.render(oldVnode, document.querySelector('#app'))
