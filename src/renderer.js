@@ -1,6 +1,7 @@
 // 文本节点和注释节点没有对应的type标识, 主动生成一个
 const Text = Symbol();
 const Comment = Symbol();
+const Fragment = Symbol();
 
 function createRenderer(options) {
   // 通过options得到操作DOM的方法
@@ -14,6 +15,11 @@ function createRenderer(options) {
   } = options;
 
   function unmount(vnode) {
+    // 在卸载时，如果卸载类型为Fragment，则需要卸载children
+    if (vnode.type === Fragment) {
+      vnode.children.forEach(c => unmount(c));
+      return;
+    }
     // 根据vnode获取要卸载的真实dom元素
     const el = vnode.el;
     // 获取el的父元素
@@ -30,7 +36,8 @@ function createRenderer(options) {
     } else if (Array.isArray(vnode.children)) {
       // 如果是数组，递归挂载子节点
       vnode.children.forEach(child => {
-        mountElement(child, el);
+        // 这里不能使用mountElement， 因为child不一定是元素类型节点，需要在patch判断
+        patch(null, child, el);
       })
     }
     // 处理props
@@ -134,6 +141,15 @@ function createRenderer(options) {
           // 如果文本节点内容不一致，setText更新内容
           setText(el, n2.children);
         }
+      }
+    } else if (type === Fragment) {
+      // 如果新vnode类型为Fragment， 只需要处理children即可
+      if (!n1) {
+        // 挂载
+        n2.children.forEach(c => patch(null, c, container));
+      } else {
+        // 旧vnode存在，只需要更新Fragment的children即可
+        patchChildren(n1, n2, container);
       }
     } else if (typeof type === 'object') {
       // 如果n2 type为对象，则描述的是组件
@@ -245,26 +261,26 @@ const renderer = createRenderer({
 })
 
 
-const oldVnode = {
-  type: 'div',
-  children: 'test'
-}
-renderer.render(oldVnode, document.querySelector('#app'))
+// const oldVnode = {
+//   type: 'div',
+//   children: 'test'
+// }
+// renderer.render(oldVnode, document.querySelector('#app'))
 
-const newVnode = {
-  type: 'div',
-  children: [
-    {
-      type: 'span',
-      children: 'hello'
-    },
-    {
-      type: 'p',
-      children: 'world'
-    },
-  ]
-}
-renderer.render(newVnode, document.querySelector('#app'))
+// const newVnode = {
+//   type: 'div',
+//   children: [
+//     {
+//       type: 'span',
+//       children: 'hello'
+//     },
+//     {
+//       type: 'p',
+//       children: 'world'
+//     },
+//   ]
+// }
+// renderer.render(newVnode, document.querySelector('#app'))
 
 // const newVnode = {
 //   type: Text,
@@ -277,3 +293,37 @@ renderer.render(newVnode, document.querySelector('#app'))
 //   children: 'Some Text2666666'
 // }
 // renderer.render(oldVnode, document.querySelector('#app'))
+
+
+const oldVnode = {
+  type: 'div',
+  children: [
+    {
+      type: Fragment,
+      children: [
+        { type: 'p', children: 'text 1' },
+        { type: 'p', children: 'text 2' },
+        { type: 'p', children: 'text 3' },
+        { type: 'p', children: 'text 4' }
+      ]
+    }
+  ]
+}
+renderer.render(oldVnode, document.querySelector('#app'))
+
+
+const newVnode = {
+  type: 'div',
+  children: [
+    {
+      type: Fragment,
+      children: [
+        { type: 'p', children: 'text 1' },
+        { type: 'p', children: 'text 2' },
+        { type: 'p', children: 'text 3' }
+      ]
+    },
+    { type: 'section', children: '分割线' }
+  ]
+}
+renderer.render(newVnode, document.querySelector('#app'))
