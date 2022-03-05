@@ -76,15 +76,46 @@ function createRenderer(options) {
     const newChildren = n2.children;
     // 四个索引，分别指向新旧节点的头尾
     let oldStartIndex = 0;
-    const oldEndIndex = oldChildren.length - 1;
+    let oldEndIndex = oldChildren.length - 1;
     let newStartIndex = 0;
-    const newEndIndex = newChildren.length - 1;
+    let newEndIndex = newChildren.length - 1;
     // 四个索引指向的vnode节点
     let oldStartVnode = oldChildren[oldStartIndex];
     let oldEndVnode = oldChildren[oldEndIndex];
     let newStartVnode = newChildren[newStartIndex];
     let newEndVnode = newChildren[newEndIndex];
 
+    while(newStartIndex <= newEndIndex && oldStartIndex <= oldEndIndex) {
+
+      if (oldStartVnode.key === newStartVnode.key) {
+        // 第一步： oldStartVnode和newStartVnode比较
+        patch(oldStartVnode, newStartVnode, container);
+        oldStartVnode = oldChildren[++oldStartIndex];
+        newStartVnode = newChildren[++newStartIndex];
+      } else if (oldEndVnode.key === newEndVnode.key) {
+        // 第二步： oldEndVnode和newEndVnode比较
+        patch(oldEndVnode, newEndVnode, container);
+        oldEndVnode = oldChildren[--oldEndIndex];
+        newEndVnode = newChildren[--newEndIndex];
+      } else if (oldStartVnode.key === newEndVnode.key) {
+        // 第三步： oldStartVnode和newEndVnode比较
+        patch(oldStartVnode, newEndVnode, container);
+        // 将旧的子节点头部移动到旧的子节点的尾部节点的后面, 这里anchor选择oldEndVnode的下一个兄弟节点
+        insert(oldStartVnode.el, container, oldEndVnode.el.nextSibling);
+        // 更新索引
+        oldStartVnode = oldChildren[++oldStartIndex];
+        newEndVnode = newChildren[--newEndIndex];
+      } else if (oldEndVnode.key === newStartVnode.key) {
+        // 第四步： oldEndVnode和newStartVnode比较
+        // oldend对应newstart,说明需要将位置移动到newStart前面
+        patch(oldEndVnode, newStartVnode, container);
+        insert(oldEndVnode.el, container, oldStartVnode.el);
+        oldEndVnode = oldChildren[--oldEndIndex];
+        newStartVnode = newChildren[++newStartIndex];
+      } else {
+        // 四次比较均不相同
+      }
+    }
   }
 
   function patchChildren(n1, n2, container) {
@@ -268,7 +299,8 @@ const oldVnode = {
   children: [
     { type: 'p', children: '1', key: 1 },
     { type: 'p', children: '2', key: 2 },
-    { type: 'p', children: 'hello', key: 3 }
+    { type: 'p', children: '3', key: 3 },
+    { type: 'p', children: '4', key: 4 }
   ]
 }
 renderer.render(oldVnode, document.querySelector('#app'))
@@ -276,8 +308,10 @@ renderer.render(oldVnode, document.querySelector('#app'))
 const newVnode = {
   type: 'div',
   children: [
+    { type: 'p', children: '4', key: 4 },
+    { type: 'p', children: '2', key: 2 },
     { type: 'p', children: '1', key: 1 },
-    { type: 'p', children: '2', key: 2 }
+    { type: 'p', children: '3', key: 3 }
   ]
 }
 
