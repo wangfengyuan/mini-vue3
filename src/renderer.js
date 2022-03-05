@@ -114,7 +114,9 @@ const renderer = createRenderer({
         if (!invoker) {
           // 如果invoker不存在，则创建一个伪造的invoker并缓存到el._vei
           invoker = el._vei[key] = function (e) {
-            if (Array.isArray(invoker)) {
+            // e.timestamp是事件发生的时间
+            if (e.timeStamp < invoker.attached) return;
+            if (Array.isArray(invoker.value)) {
               /**
                * 处理如下结构
                * props： {
@@ -128,6 +130,8 @@ const renderer = createRenderer({
           };
           // 真正的事件处理函数赋值给invoker.value
           invoker.value = nextValue;
+          // 添加invoker.attached属性，存储事件绑定时间，需要屏蔽所有绑定时间晚于事件触发时间的事件执行
+          invoker.attached = performance.now();
           el.addEventListener(name, invoker);
         } else {
           // 如果invoker存在，则更新invoker.value,更新时省去了removeEventListener和addEventListener
