@@ -79,7 +79,7 @@ function binarySearch(nums, target) {
 
 
 
-function getSequence(arr) {
+export default function lis(arr) {
   // 复制原数组,为了最后从结果result数组中溯源到真正的递增序列
   const p = arr.slice();
   // 存放索引，先把0即第一个索引放入
@@ -131,4 +131,4 @@ function getSequence(arr) {
   return result;
 }
 
-console.log(getSequence3([2,3,1,5,6,8,7,9,4]));
+// console.log(getSequence3([2,3,1,5,6,8,7,9,4]));
