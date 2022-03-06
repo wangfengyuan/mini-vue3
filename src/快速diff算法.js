@@ -266,9 +266,24 @@ function createRenderer(options) {
       }
     } else if (typeof type === 'object') {
       // 如果n2 type为对象，则描述的是组件
+      if (!n1) {
+        // 挂载组件
+        mountComponent(n2, container, anchor);
+      } else {
+        patchComponent(n1, n2, anchor);
+      }
     } else if (typeof type === 'xx') {
       // c处理其他类型的vnode
     }
+  }
+
+  function mountComponent(vnode, container, anchor) {
+    // 通过vnode.type获取选项对象
+    const componentOptions = vnode.type;
+    const { render } = componentOptions;
+    // 执行渲染
+    const subTree = render();
+    patch(null, subTree, container, anchor);
   }
 
   function render(vnode, container) {
@@ -373,32 +388,21 @@ const renderer = createRenderer({
   }
 })
 
-const oldVnode = {
-  type: 'div',
-  children: [
-    { type: 'p', children: '1', key: 1 },
-    { type: 'p', children: '2', key: 2 },
-    { type: 'p', children: '3', key: 3 },
-    { type: 'p', children: '4', key: 4 },
-    { type: 'p', children: '6', key: 6 },
-    { type: 'p', children: '5', key: 5 },
-  ]
-}
-renderer.render(oldVnode, document.querySelector('#app'))
-
-const newVnode = {
-  type: 'div',
-  children: [
-    { type: 'p', children: '1', key: 1 },
-    { type: 'p', children: '3', key: 3 },
-    { type: 'p', children: '4', key: 4 },
-    { type: 'p', children: '2', key: 2 },
-    { type: 'p', children: '7', key: 7 },
-    { type: 'p', children: '5', key: 5 },
-  ]
+const MyComponent = {
+  name: 'MyComponent',
+  data() {
+    return { foo: 1 }
+  },
+  render() {
+    // 返回虚拟DOM
+    return {
+      type: 'div',
+      children: '我是文本内容'
+    }
+  }
 }
 
-setTimeout(() => {
-  console.log('update')
-  renderer.render(newVnode, document.querySelector('#app'))
-}, 400);
+const CompVNode = {
+  type: MyComponent,
+}
+renderer.render(CompVNode, document.querySelector('#app'))

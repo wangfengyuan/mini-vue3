@@ -1019,3 +1019,33 @@ console.log(newObj.foo);
 ```
 实际组件中，组件中setup返回的数据会传递给proxyRefs函数进行处理，这也是为什么模板中可以直接访问一个ref值而无须通过value属性访问
 
+
+## 组件实现原理
+
+为了使用虚拟节点描述组件，用vnode.type存储组件的选项对象
+```
+const MyComponent = {
+  name: 'MyComponent',
+  data() {
+    return { foo: 1 }
+  }
+}
+
+const vnode = {
+  type: MyComponent
+  // ...
+}
+
+```
+渲染组件如下
+```
+function mountComponent(vnode, container, anchor) {
+  // 通过vnode.type获取选项对象
+  const componentOptions = vnode.type;
+  const { render } = componentOptions;
+  // 执行渲染
+  const subTree = render();
+  patch(null, subTree, container, anchor);
+}
+```
+
