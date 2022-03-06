@@ -281,13 +281,55 @@ function createRenderer(options) {
   function mountComponent(vnode, container, anchor) {
     // 通过vnode.type获取选项对象
     const componentOptions = vnode.type;
-    const { render, data } = componentOptions;
+    const { render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated } = componentOptions;
+
+    // 调用beforeCreate
+    beforeCreate && beforeCreate();
+
     // 使用reactive将data返回值包裹成响应式
     const state = reactive(data());
+
+    // 定义组件实例
+    const instance = {
+      // 组件自身状态
+      state,
+      // 是否挂载
+      isMounted: false,
+      // 组件所渲染的内容，即子树subTree
+      subTree: null,
+    }
+
+    // 将组件实例设置到vnode上
+    vnode.component = instance;
+
+    // 这里调用created
+    created && created.call(state);
+
     // 执行渲染
     effect(() => {
+      // 获取子树
       const subTree = render.call(state);
-      patch(null, subTree, container, anchor);
+      // 检查是否挂载
+      if (!instance.isMounted) {
+        // 这里调用beforeMount
+        beforeMount && beforeMount();
+        // 初次挂载
+        patch(null, subTree, container, anchor);
+        // 重点，挂载完后设置isMounted为true
+        instance.isMounted = true;
+
+        // 这里调用mounted
+        mounted && mounted.call(state);
+      } else {
+        // 这里调用beforeUpdate
+        beforeUpdate && beforeUpdate.call(state);
+        // 下一次更新时instance.isMounted = true; instance.subTree为上一次的vnode
+        patch(instance.subTree, subTree, container, anchor);
+        // 这里调用updated
+        updated && updated.call(state);
+      }
+      // 更新subTree
+      instance.subTree = subTree;
     }, {
       scheduler: queueJob
     })
