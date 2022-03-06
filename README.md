@@ -1049,3 +1049,21 @@ function mountComponent(vnode, container, anchor) {
 }
 ```
 
+## 组件状态与自更新
+```
+function mountComponent(vnode, container, anchor) {
+  // 通过vnode.type获取选项对象
+  const componentOptions = vnode.type;
+  const { render, data } = componentOptions;
+  // 使用reactive将data返回值包裹成响应式
+  const state = reactive(data());
+  // 执行渲染
+  effect(() => {
+    const subTree = render.call(state);
+    patch(null, subTree, container, anchor);
+  }, {
+    scheduler: queueJob
+  })
+}
+```
+

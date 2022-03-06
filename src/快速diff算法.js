@@ -1,5 +1,6 @@
 // 文本节点和注释节点没有对应的type标识, 主动生成一个
 import lis from './lis';
+import { reactive, queueJob } from './reactive';
 const Text = Symbol();
 const Comment = Symbol();
 const Fragment = Symbol();
@@ -280,10 +281,16 @@ function createRenderer(options) {
   function mountComponent(vnode, container, anchor) {
     // 通过vnode.type获取选项对象
     const componentOptions = vnode.type;
-    const { render } = componentOptions;
+    const { render, data } = componentOptions;
+    // 使用reactive将data返回值包裹成响应式
+    const state = reactive(data());
     // 执行渲染
-    const subTree = render();
-    patch(null, subTree, container, anchor);
+    effect(() => {
+      const subTree = render.call(state);
+      patch(null, subTree, container, anchor);
+    }, {
+      scheduler: queueJob
+    })
   }
 
   function render(vnode, container) {
@@ -397,7 +404,7 @@ const MyComponent = {
     // 返回虚拟DOM
     return {
       type: 'div',
-      children: '我是文本内容'
+      children: `foo的值为我是文本内容: ${this.foo}`,
     }
   }
 }

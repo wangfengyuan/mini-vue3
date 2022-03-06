@@ -17,6 +17,11 @@ const ITERATE_KEY = Symbol('iterate');
 // 一个标志位，用于标记当前是否有副作用正在执行
 let isFlushing = false;
 
+export function queueJob(job) {
+  jobQueue.add(job);
+  flushJob();
+}
+
 function flushJob() {
   // 如果队列正在刷新，则什么都不做
   if (isFlushing) return;
@@ -269,7 +274,7 @@ function createReactive(obj, isShallow = false, isReadonly = false) {
 // 存储obj到proxy关系
 const reactiveMap = new Map();
 
-function reactive(obj) {
+export function reactive(obj) {
   const existProxy = reactiveMap.get(obj);
   // 找到了返回，之前创建过
   if (existProxy) return existProxy;
