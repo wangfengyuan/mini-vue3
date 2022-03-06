@@ -105,10 +105,10 @@ function createRenderer(options) {
     if (j > oldEnd && j <= newEnd) {
       const anchorIndex = newEnd + 1;
       const anchor = anchorIndex < newChildren.length ? newChildren[anchorIndex].el: null;
-      while(j <=newEnd) {
+      while(j <= newEnd) {
         patch(null, newChildren[j++], container, anchor);
       }
-    } else if (j > newEnd && j < oldEnd) {
+    } else if (j > newEnd && j <= oldEnd) {
       // j-->oldEnd之间的节点需要删除
       while(j <= oldEnd) {
         unmount(oldChildren[j++]);
@@ -158,6 +158,39 @@ function createRenderer(options) {
         } else {
           // 如果更新过的节点数量大于需要更新的数量，则卸载多于节点
           unmount(oldVNode);
+        }
+      }
+
+      if (moved) {
+        // 需要移动
+        // 计算最长递增子序列，返回对应的在数组中的索引，比如[2, 3, 1, -1],返回seq为[0, 1]
+        // 含义是：在新的一组子节点中，索引值0和1对应的这两个子节点在更新前后顺序没有发生变化
+        // 换句话说，索引值为0和1的节点不需要移动
+        const seq = lis(source);
+        // 为了完成节点的移动，创建两个索引值i和s
+        // 索引i指向新的一组子节点的最后一个元素， 索引s指向最长递增子序列的最后一个元素
+        let s = seq.length - 1;
+        let i = count - 1;
+        for(i; i >= 0; i--) {
+          if (source[i] === -1) {
+            // 如果source[i]为-1，则说明是全新节点，需要挂载
+            const pos = i + newStart;
+            const newVNode = newChildren[pos];
+            const nextPos = pos + 1;
+            const anchor = nextPos < newChildren.length ? newChildren[nextPos].el: null;
+            // 挂载
+            patch(null, newVNode, container, anchor);      
+          } else if (i !== seq[s]) {
+            // 如果i和s不相等，则需要移动
+            const pos = i + newStart;
+            const newVNode = newChildren[pos];
+            const nextPos = pos + 1;
+            const anchor = nextPos < newChildren.length ? newChildren[nextPos].el: null;
+            insert(newVNode.el, container, anchor);
+          } else {
+            // i === seq[s] 说明该位置的节点不需要移动
+            s--;
+          }
         }
       }
     }
