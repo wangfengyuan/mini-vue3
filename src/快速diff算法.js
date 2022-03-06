@@ -1,6 +1,6 @@
 // 文本节点和注释节点没有对应的type标识, 主动生成一个
 import lis from './lis';
-import { reactive, queueJob } from './reactive';
+import { reactive, queueJob, shallowReactive } from './reactive';
 const Text = Symbol();
 const Comment = Symbol();
 const Fragment = Symbol();
@@ -281,18 +281,23 @@ function createRenderer(options) {
   function mountComponent(vnode, container, anchor) {
     // 通过vnode.type获取选项对象
     const componentOptions = vnode.type;
-    const { render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated } = componentOptions;
+    // 从组件选项对象中取出props即propsOption
+    const { render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated, props: propsOption } = componentOptions;
 
     // 调用beforeCreate
     beforeCreate && beforeCreate();
 
     // 使用reactive将data返回值包裹成响应式
     const state = reactive(data());
+    // 调用resolveProps解析出最终的props数据与attrs数据
+    const [props, attrs] = resolveProps(propsOption, vnode.props);
 
     // 定义组件实例
     const instance = {
       // 组件自身状态
       state,
+      // 组件props包装成shallowReactive
+      props: shallowReactive(props),
       // 是否挂载
       isMounted: false,
       // 组件所渲染的内容，即子树subTree
@@ -333,6 +338,26 @@ function createRenderer(options) {
     }, {
       scheduler: queueJob
     })
+  }
+
+  function patchComponent(n1, n2, anchor) {
+    // 获取组件实例
+  }
+
+  function resolveProps(options, propsData) {
+    const props = {};
+    const attrs = {};
+    // 遍历为组件传递的props数据
+    for(const key in propsData) {
+      if (key in options) {
+        // 如果这个key在组件选项中有定义，则视为合法的props
+        props[key] = propsData[key];
+      } else {
+        // 否则视为attrs
+        attrs[key] = propsData[key];
+      }
+    } 
+    return [props, attrs];
   }
 
   function render(vnode, container) {

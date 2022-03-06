@@ -285,7 +285,7 @@ export function reactive(obj) {
   return proxy;
 }
 
-function shallowReactive(obj) {
+export function shallowReactive(obj) {
   return createReactive(obj, true);
 }
 

@@ -1128,3 +1128,59 @@ function mountComponent(vnode, container, anchor) {
   }
 ```
 
+## props与组件被动更新
+
+```
+<MyComponent title="a title" :other="val" />
+```
+这段代码对应的vnode为
+```
+const vnode = {
+  type: MyComponent,
+  props: {
+    title: 'a title',
+    other: this.val,
+  }
+}
+```
+在编写组件时，需要显示的指定组件会接收哪些props数据，如
+```
+const MyComponent = {
+  // 组件接收名为title的props
+  props: {
+    title: String
+  },
+  render() {
+    return {
+      type: 'div',
+      children: `count is: ${this.title}`
+    }
+  }
+}
+```
+对于一个组件，两部分props需要关心
+- 为组件传递的props，即组件的vnode.props
+- 组件选项中定义的props选项，即MyComponent.props对象
+
+需要结合这两个来解析出组件渲染时需要用到的props数据，实现如下
+```
+function resolveProps(options, propsData) {
+  const props = {};
+  const attrs = {};
+  // 遍历为组件传递的props数据
+  for(const key in propsData) {
+    if (key in options) {
+      // 如果这个key在组件选项中有定义，则视为合法的props
+      props[key] = propsData[key];
+    } else {
+      // 否则视为attrs
+      attrs[key] = propsData[key];
+    }
+  } 
+  return [props, attrs];
+}
+```
+
+组件props发生变化时会调用patchComponent函数来完成子组件的更新，我们把父组件自更新所引起的子组件的更新叫做子组件的被动更新，需要做的是
+- 检测子组件是否真的需要更新，因为子组件的props可能是不变的
+- 如果需要更新，则更新子组件的props、slots等内容
