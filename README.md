@@ -1387,3 +1387,101 @@ function resolveProps(options, propsData) {
 }
 
 ```
+
+## 插槽的工作原理与实现
+组件的插槽指组件会预留一个槽位，该槽位具体要渲染的内容由用户输入，下面的MyComponent模板
+```
+<template>
+  <header><slot name="header" /></header>
+  <div>
+    <slot name=body />
+  </div>
+  <footer><slot name="footer" /></footer>
+</template>
+```
+当在父组件中使用时，可以根据插槽名字来插入自定义的内容
+```
+<MyComponent>
+  <template #header>
+    <h1>我是标题</h1>
+  </template>
+  <template #body>
+    <section>我是内容</section>
+  </template>
+  <template #footer>
+    <p>我是注脚</p>
+  </template>
+</MyComponent>
+```
+上述父组件模板会被编译成如下渲染函数
+```
+function render() {
+  return {
+    type: MyComponent,
+    // 组件的children会被编译成一个对象
+    children: {
+      header() {
+        return { type: 'h1', children: '我是标题' }
+      },
+      body() {
+        return { type: 'section', children: '我是内容' }
+      },
+      footer() {
+        return { type: 'p', children: '我是注脚' }
+      },
+    }
+  }
+}
+```
+插槽内容被编译成插槽函数，而函数返回值对应的具体的插槽内容，组件MyComponent会被编译成如下
+```
+function render() {
+  return [
+    {
+      type: 'header',
+      children: [this.$slots.header()]
+    },
+    {
+      type: 'body',
+      children: [this.$slots.body()]
+    },
+    {
+      type: 'footer',
+      children: [this.$slots.footer()]
+    }
+  ]
+}
+```
+
+```
+function mountComponent() {
+
+  // 使用编译好的children作为slots对象
+  const slots = vnode.children || {};
+
+  // 定义组件实例
+  const instance = {
+    // 组件自身状态
+    state,
+    // 组件props包装成shallowReactive
+    props: shallowReactive(props),
+    // 是否挂载
+    isMounted: false,
+    // 组件所渲染的内容，即子树subTree
+    subTree: null,
+    // 插槽添加到组件实例
+    slots,
+  }
+}
+
+const renderContext =  new Proxy(instance, {
+  get(t, k, r) {
+    // 取得组件自身状态和props数据
+    const { props, state, slots } = t;
+    // 访问$slots时返回组件实例上的slots
+    if (k === '$slots') return slots;
+    ...
+  },
+}
+```
+实现如上

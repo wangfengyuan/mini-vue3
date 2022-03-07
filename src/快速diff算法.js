@@ -292,6 +292,9 @@ function createRenderer(options) {
     // 调用resolveProps解析出最终的props数据与attrs数据
     const [props, attrs] = resolveProps(propsOption, vnode.props);
 
+    // 使用编译好的children作为slots对象
+    const slots = vnode.children || {};
+
     // 定义组件实例
     const instance = {
       // 组件自身状态
@@ -302,6 +305,8 @@ function createRenderer(options) {
       isMounted: false,
       // 组件所渲染的内容，即子树subTree
       subTree: null,
+      // 插槽添加到组件实例
+      slots,
     }
 
     /**
@@ -320,9 +325,7 @@ function createRenderer(options) {
         console.error('事件不存在');
       }
     }
-
-    // 暂时只需要attrs,因为还没涉及到emit和slots
-    const setupContext = { attrs, emit };
+    const setupContext = { attrs, emit, slots };
     // 调用setup函数,将只读版本的props作为第一个参数，避免用户修改props值，setupContext作为第二个参数
     const setupResult = setup ? setup(shallowReadonly(instance.props), setupContext) : null;
     // setupState存储由setup返回的值
@@ -343,7 +346,9 @@ function createRenderer(options) {
     const renderContext =  new Proxy(instance, {
       get(t, k, r) {
         // 取得组件自身状态和props数据
-        const { props, state } = t;
+        const { props, state, slots } = t;
+        // 访问$slots时返回组件实例上的slots
+        if (k === '$slots') return slots;
         // 先尝试读取自身状态
         if (state && k in state) {
           return state[k];
@@ -452,6 +457,7 @@ function createRenderer(options) {
     const attrs = {};
     // 遍历为组件传递的props数据
     for(const key in propsData) {
+      // 以on开头的props,无论是否有显式的声明，都添加到props中
       if (key in options || key.startsWith('on')) {
         // 如果这个key在组件选项中有定义，则视为合法的props
         props[key] = propsData[key];
@@ -583,8 +589,21 @@ const MyComponent = {
   render() {
     // 返回虚拟DOM
     return {
-      type: 'div',
-      children: `foo的值为我是文本内容: ${this.foo}, props值为${this.title}, count值为${this.count.value}`,
+      type: Fragment,
+      children: [
+        {
+          type: 'header',
+          children: [this.$slots.header()]
+        },
+        {
+          type: 'body',
+          children: [this.$slots.body()]
+        },
+        {
+          type: 'footer',
+          children: [this.$slots.footer()]
+        }
+      ]
     }
   }
 }
@@ -595,19 +614,30 @@ const OldCompVNode = {
     title: 'a big title',
     other: 'other',
     onChange: (...args) => console.log(args),
+  },
+  children: {
+    header() {
+      return { type: 'h1', children: '我是标题' }
+    },
+    body() {
+      return { type: 'section', children: '我是内容' }
+    },
+    footer() {
+      return { type: 'p', children: '我是注脚' }
+    },
   }
 }
 
 renderer.render(OldCompVNode, document.querySelector('#app'));
 
-const NewCompVNode = {
-  type: MyComponent,
-  props: {
-    title: 'a small title',
-    other: 'other',
-  }
-}
+// const NewCompVNode = {
+//   type: MyComponent,
+//   props: {
+//     title: 'a small title',
+//     other: 'other',
+//   }
+// }
 
-setTimeout(() => { 
-  renderer.render(NewCompVNode, document.querySelector('#app'));
-}, 1000);
+// setTimeout(() => { 
+//   renderer.render(NewCompVNode, document.querySelector('#app'));
+// }, 1000);
