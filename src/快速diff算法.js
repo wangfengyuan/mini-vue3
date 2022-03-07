@@ -341,7 +341,48 @@ function createRenderer(options) {
   }
 
   function patchComponent(n1, n2, anchor) {
-    // 获取组件实例
+    // 组件vnode为下面结构
+    // {
+    //   type: Component,
+    //   props: {},
+    //   component: {
+    //     state,
+    //     props,
+    //     isMounted: true,
+    //     subTree: ...,
+    //   },
+    // }
+    // 获取组件实例，即n1.component,同时让新的组件虚拟节点n2.component指向它
+    const instance = n2.component = n1.component;
+    // 获取当前props数据, 这里的props值是子组件上次解析后得到的具体值
+    const { props } = instance;
+    // 调用hasPropsChanged检查是否有props更新,没有变化则不需要更新
+    if (hasPropsChanged(n1.props, n2.props)) {
+      // 调用resolveProps重新获取props
+      const [nextProps] = resolveProps(n2.type.props, n2.props); // nextProps是这次解析后子组件新的具体值
+      // 更新props
+      for (const k in nextProps) {
+        props[k] = nextProps[k];
+      }
+      // 剔除不存在的props
+      for (const k in props) {
+        if (!(k in nextProps)) delete props[k] 
+      }
+    }
+  }
+
+  function hasPropsChanged(prevProps, nextProps) {
+    const nextKeys = Object.keys(nextProps);
+    // 如果新旧数量变了说明有变化
+    if (nextKeys.length !== Object.keys(prevProps).length) {
+      return true;
+    }
+    for (let i = 0; i < nextKeys.length; i++) {
+      const key = nextKeys[i];
+      // 有不相等的props则说明有变化
+      if (nextProps[key] !== prevProps[key]) return true;
+    }
+    return false;
   }
 
   function resolveProps(options, propsData) {
