@@ -4,6 +4,21 @@ import { ref, reactive, queueJob, shallowReactive, shallowReadonly, effect } fro
 const Text = Symbol();
 const Comment = Symbol();
 const Fragment = Symbol();
+// 全局变量，存储当前正在实例化的组价实例
+let currentInstance = null;
+
+function setCurrentInstance(instance) {
+  currentInstance = instance;
+}
+
+
+function onMounted(fn) {
+  if (currentInstance) {
+    currentInstance.mounted.push(fn);
+  } else {
+    console.error('onMounted只能在setup函数中调用');
+  }
+}
 
 function createRenderer(options) {
   // 通过options得到操作DOM的方法
@@ -307,6 +322,8 @@ function createRenderer(options) {
       subTree: null,
       // 插槽添加到组件实例
       slots,
+      // 添加mounted数组，存储通过onMounted挂载的回调函数
+      mounted: [],
     }
 
     /**
@@ -326,8 +343,17 @@ function createRenderer(options) {
       }
     }
     const setupContext = { attrs, emit, slots };
+    
+    // 在调用setup之前，先把组件实例挂载到currentInstance上
+    setCurrentInstance(instance);
+
     // 调用setup函数,将只读版本的props作为第一个参数，避免用户修改props值，setupContext作为第二个参数
     const setupResult = setup ? setup(shallowReadonly(instance.props), setupContext) : null;
+
+    // setup执行完成后，清空currentInstance
+    setCurrentInstance(null); 
+
+
     // setupState存储由setup返回的值
     let setupState = null;
     // 处理setup两种情况
@@ -392,6 +418,8 @@ function createRenderer(options) {
 
         // 这里调用mounted
         mounted && mounted.call(state);
+        // 这里调用setup中onMounted注册的函数
+        instance.mounted.forEach(fn => fn());
       } else {
         // 这里调用beforeUpdate
         beforeUpdate && beforeUpdate.call(renderContext);
@@ -581,6 +609,8 @@ const MyComponent = {
   },
   setup(props, { emit }) {
     emit('change', 1, 2);
+    onMounted(() => console.log('mounted 1'));
+    onMounted(() => console.log('mounted 2'));
     const count = ref(1);
     return {
       count,

@@ -1485,3 +1485,58 @@ const renderContext =  new Proxy(instance, {
 }
 ```
 实现如上
+
+## 注册生命周期
+vue3中还支持下面写法，可以注册多个
+```
+const Comp = {
+  setup(props, context) {
+    onMounted(() => console.log('mounted 1'));
+    onMounted(() => console.log('mounted 2'));
+  }
+}
+
+```
+实现如下
+```
+// 全局变量，存储当前正在实例化的组价实例
+let currentInstance = null;
+
+function setCurrentInstance(instance) {
+  currentInstance = instance;
+}
+
+function onMounted(fn) {
+  if (currentInstance) {
+    currentInstance.mounted.push(fn);
+  } else {
+    console.error('onMounted只能在setup函数中调用');
+  }
+}
+
+function mountComponent() {
+  const instance = {
+    // 组件自身状态
+    state,
+    // 组件props包装成shallowReactive
+    props: shallowReactive(props),
+    // 是否挂载
+    isMounted: false,
+    // 组件所渲染的内容，即子树subTree
+    subTree: null,
+    // 插槽添加到组件实例
+    slots,
+    // 添加mounted数组，存储通过onMounted挂载的回调函数
+    mounted: [],
+  }
+  // 在调用setup之前，先把组件实例挂载到currentInstance上
+  setCurrentInstance(instance);
+
+  // 调用setup函数,将只读版本的props作为第一个参数，避免用户修改props值，setupContext作为第二个参数
+  const setupResult = setup ? setup(shallowReadonly(instance.props), setupContext) : null;
+
+  // setup执行完成后，清空currentInstance
+  setCurrentInstance(null); 
+}
+
+```
