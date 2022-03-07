@@ -1291,3 +1291,35 @@ const subTree = render.call(renderContext);
 
 
 ```
+
+## setup函数实现
+setup是vue3新增的选项，主要用于配合组合式API,其写法有两种，一种是返回一个对象，会当做渲染上下文，一种是返回一个渲染函数，会作为模板，另外接收两个参数，props和context
+```
+const Comp = {
+  props: {
+    foo: String
+  },
+  setup(props, context) {
+    // props.foo 访问传入的prop值
+    const { slots, emit, attrs, expose } = context;
+  }
+}
+```
+通常情况不建议将setup和vue2中的其他选项混合使用,注意renderContext中也要处理setupState,因为setup返回的也要暴露给渲染环境
+```
+let { render } = componentOptions;
+const setupContext = { attrs };
+// 调用setup函数,将只读版本的props作为第一个参数，避免用户修改props值，setupContext作为第二个参数
+const setupResult = setup ? setup(shallowReadonly(instance.props), setupContext) : null;
+// setupState存储由setup返回的值
+let setupState = null;
+// 处理setup两种情况
+if (typeof setupResult === 'function') {
+  // 如果setup返回的是函数，作为渲染函数
+  if (render) console.error('setup返回函数，render选项将被忽略'); 
+  render = setupResult;
+} else {
+  // 不是函数，将数据赋值给setupState
+  setupState = setupResult;
+}
+```

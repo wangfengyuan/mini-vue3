@@ -1,6 +1,6 @@
 // 文本节点和注释节点没有对应的type标识, 主动生成一个
 import lis from './lis';
-import { reactive, queueJob, shallowReactive, effect } from './reactive';
+import { ref, reactive, queueJob, shallowReactive, shallowReadonly, effect } from './reactive';
 const Text = Symbol();
 const Comment = Symbol();
 const Fragment = Symbol();
@@ -282,13 +282,13 @@ function createRenderer(options) {
     // 通过vnode.type获取选项对象
     const componentOptions = vnode.type;
     // 从组件选项对象中取出props即propsOption
-    const { render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated, props: propsOption } = componentOptions;
+    let { setup, render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated, props: propsOption } = componentOptions;
 
     // 调用beforeCreate
     beforeCreate && beforeCreate();
 
     // 使用reactive将data返回值包裹成响应式
-    const state = reactive(data());
+    const state = data ? reactive(data()) : null;
     // 调用resolveProps解析出最终的props数据与attrs数据
     const [props, attrs] = resolveProps(propsOption, vnode.props);
 
@@ -304,6 +304,21 @@ function createRenderer(options) {
       subTree: null,
     }
 
+    // 暂时只需要attrs,因为还没涉及到emit和slots
+    const setupContext = { attrs };
+    // 调用setup函数,将只读版本的props作为第一个参数，避免用户修改props值，setupContext作为第二个参数
+    const setupResult = setup ? setup(shallowReadonly(instance.props), setupContext) : null;
+    // setupState存储由setup返回的值
+    let setupState = null;
+    // 处理setup两种情况
+    if (typeof setupResult === 'function') {
+      // 如果setup返回的是函数，作为渲染函数
+      if (render) console.error('setup返回函数，render选项将被忽略'); 
+      render = setupResult;
+    } else {
+      // 不是函数，将数据赋值给setupState
+      setupState = setupResult;
+    }
     // 将组件实例设置到vnode上
     vnode.component = instance;
 
@@ -317,6 +332,8 @@ function createRenderer(options) {
           return state[k];
         } else if (k in props) { // 再尝试读取props
           return props[k]
+        } else if (setupState && k in setupState) { // 最后尝试读取setupState
+          return setupState[k];
         } else {
           console.error('要读取的数据没有找到', k);
         }
@@ -327,6 +344,8 @@ function createRenderer(options) {
           state[k] = v;
         } else if (k in props) { // 再尝试读取props
           props[k] = v;
+        } else if (setupState && k in setupState) { // 最后尝试读取setupState
+          setupState[k] = v;
         } else {
           console.error('要设置的数据没有找到', k);
         }
@@ -537,11 +556,22 @@ const MyComponent = {
   props: {
     title: String,
   },
+  setup(props, context) {
+    console.log('props-----', props);
+    console.log('context----', context);
+    const count = ref(1);
+    return {
+      count,
+    }
+    // return () => {
+    //   return { type: 'div', children: 'hello' }
+    // }
+  },
   render() {
     // 返回虚拟DOM
     return {
       type: 'div',
-      children: `foo的值为我是文本内容: ${this.foo}, props值为${this.title}`,
+      children: `foo的值为我是文本内容: ${this.foo}, props值为${this.title}, count值为${this.count.value}`,
     }
   }
 }
@@ -550,6 +580,7 @@ const OldCompVNode = {
   type: MyComponent,
   props: {
     title: 'a big title',
+    other: 'other',
   }
 }
 

@@ -293,7 +293,7 @@ function readonly(obj) {
   return createReactive(obj, false, true);
 }
 
-function shallowReadonly(obj) {
+export function shallowReadonly(obj) {
   return createReactive(obj, true, true);
 }
 
@@ -380,7 +380,7 @@ function traverse(value, seen = new Set()) {
   return value;
 }
 
-function ref(val) {
+export function ref(val) {
   // 创建包裹对象
   const wrapper = {
     value: val,
