@@ -304,8 +304,25 @@ function createRenderer(options) {
       subTree: null,
     }
 
+    /**
+     * emit函数
+     * @param {*} event 事件名称
+     * @param  {...any} payload 参数
+     */
+    function emit(event, ...payload) {
+      // 处理事件名称 change --> onChange
+      const eventName = `on${event[0].toUpperCase()}${event.slice(1)}`;
+      // 去props中查找对应的事件
+      const handler = instance.props[eventName];
+      if (handler) {
+        handler(...payload);
+      } else {
+        console.error('事件不存在');
+      }
+    }
+
     // 暂时只需要attrs,因为还没涉及到emit和slots
-    const setupContext = { attrs };
+    const setupContext = { attrs, emit };
     // 调用setup函数,将只读版本的props作为第一个参数，避免用户修改props值，setupContext作为第二个参数
     const setupResult = setup ? setup(shallowReadonly(instance.props), setupContext) : null;
     // setupState存储由setup返回的值
@@ -435,7 +452,7 @@ function createRenderer(options) {
     const attrs = {};
     // 遍历为组件传递的props数据
     for(const key in propsData) {
-      if (key in options) {
+      if (key in options || key.startsWith('on')) {
         // 如果这个key在组件选项中有定义，则视为合法的props
         props[key] = propsData[key];
       } else {
@@ -556,16 +573,12 @@ const MyComponent = {
   props: {
     title: String,
   },
-  setup(props, context) {
-    console.log('props-----', props);
-    console.log('context----', context);
+  setup(props, { emit }) {
+    emit('change', 1, 2);
     const count = ref(1);
     return {
       count,
     }
-    // return () => {
-    //   return { type: 'div', children: 'hello' }
-    // }
   },
   render() {
     // 返回虚拟DOM
@@ -581,6 +594,7 @@ const OldCompVNode = {
   props: {
     title: 'a big title',
     other: 'other',
+    onChange: (...args) => console.log(args),
   }
 }
 
@@ -590,6 +604,7 @@ const NewCompVNode = {
   type: MyComponent,
   props: {
     title: 'a small title',
+    other: 'other',
   }
 }
 

@@ -1323,3 +1323,67 @@ if (typeof setupResult === 'function') {
   setupState = setupResult;
 }
 ```
+
+## 组件事件与emit实现
+emit用来发射自定义事件
+```
+const MyComponent = {
+  name: 'MyComponent',
+  setup(props, { emit }) {
+    emit('change', 1, 2);
+    ...
+  },
+}
+```
+父组件中可以监听
+```
+<MyComponent @change="handler" />
+
+const vnode = {
+  type: MyComponent,
+  props: {
+    onChange: handler,
+  }
+}
+
+```
+可以看到change这个被编译成onChange属性，并存储在props数据中
+```
+/**
+  * emit函数
+  * @param {*} event 事件名称
+  * @param  {...any} payload 参数
+  */
+function emit(event, ...payload) {
+  // 处理事件名称 change --> onChange
+  const eventName = `on${event[0].toUpperCase()}${event.slice(1)}`;
+  // 去props中查找对应的事件
+  const handler = instance.props[eventName];
+  if (handler) {
+    handler(...payload);
+  } else {
+    console.error('事件不存在');
+  }
+}
+
+// 暂时只需要attrs,因为还没涉及到slots
+const setupContext = { attrs, emit };
+
+// 在解析props时，如果以on开头也当做props
+function resolveProps(options, propsData) {
+  const props = {};
+  const attrs = {};
+  // 遍历为组件传递的props数据
+  for(const key in propsData) {
+    if (key in options || key.startsWith('on')) {
+      // 如果这个key在组件选项中有定义，则视为合法的props
+      props[key] = propsData[key];
+    } else {
+      // 否则视为attrs
+      attrs[key] = propsData[key];
+    }
+  } 
+  return [props, attrs];
+}
+
+```
