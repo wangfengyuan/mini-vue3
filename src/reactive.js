@@ -55,7 +55,7 @@ function cleanup(effectFn) {
 }
 
 
-function effect(fn, options = {}) {
+export function effect(fn, options = {}) {
   const effectFn = () => {
     // 清理旧的依赖
     cleanup(effectFn);

@@ -1253,3 +1253,41 @@ function hasPropsChanged(prevProps, nextProps) {
 - 需要将组件实例添加到新的vnode上， 即n2.component = n1.component 因为实例只有在初次挂载时才生成的，后面没有这个实例
 - instance.props对象本身就是浅响应的，因此更新prop值时，只需要设置instance.props对象下的属性值即可触发组件重新渲染
 处理props需要编写大量边界代码，单本质上都是通过props选项定义以及为组件传递的props数据来处理的
+
+由于props数据和组件自身状态数据都需要暴露到渲染函数中，并使得渲染函数能通过this访问到他们，因此需要封装一个渲染上下文对象，如下
+```
+const renderContext =  new Proxy(instance, {
+  get(t, k, r) {
+    // 取得组件自身状态和props数据
+    const { props, state } = t;
+    // 先尝试读取自身状态
+    if (state && k in state) {
+      return state[k];
+    } else if (k in props) { // 再尝试读取props
+      return props[k]
+    } else {
+      console.error('要读取的数据没有找到', k);
+    }
+  },
+  set(t, k, v, r) {
+    const { props, state } = t;
+    if (state && k in state) {
+      state[k] = v;
+    } else if (k in props) { // 再尝试读取props
+      props[k] = v;
+    } else {
+      console.error('要设置的数据没有找到', k);
+    }
+  }
+});
+
+...
+created && created.call(renderContext);
+...
+
+...
+const subTree = render.call(renderContext);
+...
+
+
+```

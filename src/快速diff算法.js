@@ -1,6 +1,6 @@
 // 文本节点和注释节点没有对应的type标识, 主动生成一个
 import lis from './lis';
-import { reactive, queueJob, shallowReactive } from './reactive';
+import { reactive, queueJob, shallowReactive, effect } from './reactive';
 const Text = Symbol();
 const Comment = Symbol();
 const Fragment = Symbol();
@@ -307,13 +307,39 @@ function createRenderer(options) {
     // 将组件实例设置到vnode上
     vnode.component = instance;
 
+    // 创建渲染上下文，本质上是组件实例的代理
+    const renderContext =  new Proxy(instance, {
+      get(t, k, r) {
+        // 取得组件自身状态和props数据
+        const { props, state } = t;
+        // 先尝试读取自身状态
+        if (state && k in state) {
+          return state[k];
+        } else if (k in props) { // 再尝试读取props
+          return props[k]
+        } else {
+          console.error('要读取的数据没有找到', k);
+        }
+      },
+      set(t, k, v, r) {
+        const { props, state } = t;
+        if (state && k in state) {
+          state[k] = v;
+        } else if (k in props) { // 再尝试读取props
+          props[k] = v;
+        } else {
+          console.error('要设置的数据没有找到', k);
+        }
+      }
+    });
+
     // 这里调用created
-    created && created.call(state);
+    created && created.call(renderContext);
 
     // 执行渲染
     effect(() => {
       // 获取子树
-      const subTree = render.call(state);
+      const subTree = render.call(renderContext);
       // 检查是否挂载
       if (!instance.isMounted) {
         // 这里调用beforeMount
@@ -327,11 +353,11 @@ function createRenderer(options) {
         mounted && mounted.call(state);
       } else {
         // 这里调用beforeUpdate
-        beforeUpdate && beforeUpdate.call(state);
+        beforeUpdate && beforeUpdate.call(renderContext);
         // 下一次更新时instance.isMounted = true; instance.subTree为上一次的vnode
         patch(instance.subTree, subTree, container, anchor);
         // 这里调用updated
-        updated && updated.call(state);
+        updated && updated.call(renderContext);
       }
       // 更新subTree
       instance.subTree = subTree;
@@ -508,16 +534,34 @@ const MyComponent = {
   data() {
     return { foo: 1 }
   },
+  props: {
+    title: String,
+  },
   render() {
     // 返回虚拟DOM
     return {
       type: 'div',
-      children: `foo的值为我是文本内容: ${this.foo}`,
+      children: `foo的值为我是文本内容: ${this.foo}, props值为${this.title}`,
     }
   }
 }
 
-const CompVNode = {
+const OldCompVNode = {
   type: MyComponent,
+  props: {
+    title: 'a big title',
+  }
 }
-renderer.render(CompVNode, document.querySelector('#app'))
+
+renderer.render(OldCompVNode, document.querySelector('#app'));
+
+const NewCompVNode = {
+  type: MyComponent,
+  props: {
+    title: 'a small title',
+  }
+}
+
+setTimeout(() => { 
+  renderer.render(NewCompVNode, document.querySelector('#app'));
+}, 1000);
