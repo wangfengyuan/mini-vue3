@@ -293,7 +293,12 @@ function createRenderer(options) {
     }
   }
 
-  function defineAsyncComponent(loader) {
+  function defineAsyncComponent(options) {
+    // options可以是配置项，也可以只是加载器函数
+    if (typeof options === 'function') {
+      options = { loader: options };
+    }
+    const { loader } = options;
     // 存储异步加载的组件
     let InnerComp = null;
     // 返回一个包裹组件
@@ -302,14 +307,32 @@ function createRenderer(options) {
       setup() {
         // 异步组件是否加载成功
         const loaded = ref(false);
+        // 代表是否超时
+        const timeout = ref(false);
         // 执行加载器函数，返回promise实例，加载成功后赋值给InnerComp，并设置loaded为true
         loader().then(c => {
           InnerComp = c;
           loaded.value = true;
         });
+        let timer = null;
+        if (options.timeout) {
+          // 如果设置了超时时间，则设置定时器
+          timer = setTimeout(() => {
+            timeout.value = true;
+          }, options.timeout)
+        }
+        // 包装组件被卸载时清除定时器
+        onMounted(() => clearTimeout(timer));
+        // 占位内容
+        const placeholder = { type: Text, children: '' };
         return () => {
           // 如果加载成功则渲染组件，否则渲染一个占位内容
-          return loaded.value ? <InnerComp /> : <div>Loading...</div>;
+          if (loaded.value) {
+            return { type: InnerComp };
+          } else if (timeout.value) {
+            // 如果加载超时并且指定了ErrorComponent，则渲染ErrorComponent
+            return options.errorComponent ? { type: options.errorComponent } : placeholder;
+          }
         }
       }
     }

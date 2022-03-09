@@ -1618,3 +1618,61 @@ function defineAsyncComponent(loader) {
 }
 ```
 defineAsyncComponent函数本质上是一个高阶组件，返回包装组件
+
+
+## 超时与Error组件
+通常异步组件会以网络请求进行加载，因此需要考虑超时，超时错误时展示Error组件，用户接口设计如下
+```
+const AsyncComp = defineAsyncComponent({
+  loader: () => import('CompA.vue'),
+  timeout: 2000, // 超时时间ms
+  errorComponent: MyErrorComp // 指定出错时要渲染的组件
+})
+```
+实现如下
+```
+function defineAsyncComponent(options) {
+  // options可以是配置项，也可以只是加载器函数
+  if (typeof options === 'function') {
+    options = { loader: options };
+  }
+  const { loader } = options;
+  // 存储异步加载的组件
+  let InnerComp = null;
+  // 返回一个包裹组件
+  return {
+    name: 'AsyncComponentWrapper',
+    setup() {
+      // 异步组件是否加载成功
+      const loaded = ref(false);
+      // 代表是否超时
+      const timeout = ref(false);
+      // 执行加载器函数，返回promise实例，加载成功后赋值给InnerComp，并设置loaded为true
+      loader().then(c => {
+        InnerComp = c;
+        loaded.value = true;
+      });
+      let timer = null;
+      if (options.timeout) {
+        // 如果设置了超时时间，则设置定时器
+        timer = setTimeout(() => {
+          timeout.value = true;
+        }, options.timeout)
+      }
+      // 包装组件被卸载时清除定时器
+      onMounted(() => clearTimeout(timer));
+      // 占位内容
+      const placeholder = { type: Text, children: '' };
+      return () => {
+        // 如果加载成功则渲染组件，否则渲染一个占位内容
+        if (loaded.value) {
+          return { type: InnerComp };
+        } else if (timeout.value) {
+          // 如果加载超时并且指定了ErrorComponent，则渲染ErrorComponent
+          return options.errorComponent ? { type: options.errorComponent } : placeholder;
+        }
+      }
+    }
+  }
+}
+```
