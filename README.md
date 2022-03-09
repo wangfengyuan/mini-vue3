@@ -1820,6 +1820,31 @@ function defineAsyncComponent(options) {
 ```
 注意加载异步组件完毕时，无论成功与否都要清除延迟定时器，不然仍然会展示loading组件
 
+## 重试机制
+```
+function load() {
+  return loader()
+    .catch(err => {
+      // 如果用户指定了onError，则调用onError
+      if (options.onError) {
+        // 返回一个新的promise， 并将控制权交给用户
+        return new Promise((resolve, reject) => {
+          // 重试
+          const retry = () => {
+            resolve(load());
+            retries++;
+          }
+          // 失败
+          const fail = () => reject(err);
+          // 作为onerror的回调函数的参数，让用户决定下一步怎么做
+          options.onError(retry, fail, retries);
+        })
+      }
+      throw err;
+    })
+}
+```
+
 
 
 

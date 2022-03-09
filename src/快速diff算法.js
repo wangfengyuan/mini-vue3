@@ -304,6 +304,31 @@ function createRenderer(options) {
     const { loader } = options;
     // 存储异步加载的组件
     let InnerComp = null;
+
+    // 记录重试次数
+    let retries = 0;
+    // 封装load函数用来加载异步组件
+    function load() {
+      return loader()
+        .catch(err => {
+          // 如果用户指定了onError，则调用onError
+          if (options.onError) {
+            // 返回一个新的promise， 并将控制权交给用户
+            return new Promise((resolve, reject) => {
+              // 重试
+              const retry = () => {
+                resolve(load());
+                retries++;
+              }
+              // 失败
+              const fail = () => reject(err);
+              // 作为onerror的回调函数的参数，让用户决定下一步怎么做
+              options.onError(retry, fail, retries);
+            })
+          }
+          throw err;
+        })
+    }
     // 返回一个包裹组件
     return {
       name: 'AsyncComponentWrapper',
@@ -325,7 +350,7 @@ function createRenderer(options) {
           loading.value = true;
         }
         // 执行加载器函数，返回promise实例，加载成功后赋值给InnerComp，并设置loaded为true
-        loader()
+        load()
           .then(c => {
             InnerComp = c;
             loaded.value = true;
