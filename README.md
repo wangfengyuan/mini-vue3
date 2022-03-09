@@ -1845,9 +1845,34 @@ function load() {
 }
 ```
 
-
-
-
+## 函数式组件
+```
+function MyFuncComp(props) {
+  return { type: 'h1', children: props.title }
+}
+// 定义props
+MyFuncComp.props = {
+  title: String
+}
+```
+修改mountComponent函数如下
+```
+ function mountComponent(vnode, container, anchor) {
+    // 检查是否是函数式组件
+    const isFunctional = typeof vnode.type === 'function';
+    // 通过vnode.type获取选项对象
+    const componentOptions = vnode.type;
+    if (isFunctional) {
+      // 如果是函数式组件，将vnode.type作为渲染函数，vnode.type.props作为props选项定义即可
+      componentOptions = {
+        render: vnode.type,
+        props: vnode.type.props
+      }
+    }
+    ...
+ }
+```
+如果是函数式组件，将vnode.type作为渲染函数，并将组件函数的静态props属性即vnode.type.props作为props选项定义即可,其他逻辑保持不变，当然出于更严谨的考虑，需要通过isFunctional变量实现选择性的初始化逻辑，因为函数式组件不需要初始化data以及生命周期
 
 
 

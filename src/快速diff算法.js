@@ -283,8 +283,8 @@ function createRenderer(options) {
         // 旧vnode存在，只需要更新Fragment的children即可
         patchChildren(n1, n2, container);
       }
-    } else if (typeof type === 'object') {
-      // 如果n2 type为对象，则描述的是组件
+    } else if (typeof type === 'object' || typeof type === 'function') {
+      // 如果n2 type为对象，则描述的是组件, 如果是函数，则是函数式组件
       if (!n1) {
         // 挂载组件
         mountComponent(n2, container, anchor);
@@ -393,8 +393,17 @@ function createRenderer(options) {
   }
 
   function mountComponent(vnode, container, anchor) {
+    // 检查是否是函数式组件
+    const isFunctional = typeof vnode.type === 'function';
     // 通过vnode.type获取选项对象
-    const componentOptions = vnode.type;
+    let componentOptions = vnode.type;
+    if (isFunctional) {
+      // 如果是函数式组件，将vnode.type作为渲染函数，vnode.type.props作为props选项定义即可
+      componentOptions = {
+        render: vnode.type,
+        props: vnode.type.props
+      }
+    }
     // 从组件选项对象中取出props即propsOption
     let { setup, render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated, props: propsOption } = componentOptions;
 
@@ -505,7 +514,7 @@ function createRenderer(options) {
     // 执行渲染
     effect(() => {
       // 获取子树
-      const subTree = render.call(renderContext);
+      const subTree = render.call(renderContext, renderContext);
       // 检查是否挂载
       if (!instance.isMounted) {
         // 这里调用beforeMount
@@ -737,25 +746,41 @@ const MyComponent = {
   }
 }
 
+// const OldCompVNode = {
+//   type: MyComponent,
+//   props: {
+//     title: 'a big title',
+//     other: 'other',
+//     onChange: (...args) => console.log(args),
+//   },
+//   children: {
+//     header() {
+//       return { type: 'h1', children: '我是标题' }
+//     },
+//     body() {
+//       return { type: 'section', children: '我是内容' }
+//     },
+//     footer() {
+//       return { type: 'p', children: '我是注脚' }
+//     },
+//   }
+// }
+
+function MyFuncComp(props) {
+  return { type: 'h1', children: props.title }
+}
+MyFuncComp.props = {
+  title: String
+}
+
 const OldCompVNode = {
-  type: MyComponent,
+  type: MyFuncComp,
   props: {
     title: 'a big title',
     other: 'other',
-    onChange: (...args) => console.log(args),
   },
-  children: {
-    header() {
-      return { type: 'h1', children: '我是标题' }
-    },
-    body() {
-      return { type: 'section', children: '我是内容' }
-    },
-    footer() {
-      return { type: 'p', children: '我是注脚' }
-    },
-  }
 }
+
 
 renderer.render(OldCompVNode, document.querySelector('#app'));
 
