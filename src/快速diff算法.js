@@ -36,6 +36,9 @@ function createRenderer(options) {
     if (vnode.type === Fragment) {
       vnode.children.forEach(c => unmount(c));
       return;
+    } else if (typeof vnode.type === 'object') {
+      // 组件卸载，本质上是卸载组件所渲染的内容即subTree
+      unmount(vnode.component.subTree);
     }
     // 根据vnode获取要卸载的真实dom元素
     const el = vnode.el;
@@ -309,13 +312,30 @@ function createRenderer(options) {
         const loaded = ref(false);
         // 定义error对象
         const error = shallowRef(null);
+        // 代表是否正在加载
+        const loading = ref(true);
+        const loadingTimer = null;
+        // 如果有 delay 选项，时间到后将loading.value设置为true
+        if (options.delay) {
+          loadingTimer = setTimeout(() => {
+            loading.value = true;
+          }, options.delay)
+        } else {
+          // 如果没有delay，则立即设置loading.value为true
+          loading.value = true;
+        }
         // 执行加载器函数，返回promise实例，加载成功后赋值给InnerComp，并设置loaded为true
         loader()
           .then(c => {
             InnerComp = c;
             loaded.value = true;
           })
-          .catch(e => error.value = e); // catch捕获加载中的错误
+          .catch(e => error.value = e) // catch捕获加载中的错误
+          .finally(() => {
+            loading.value = false;
+            // 加载完毕后，无论成功与否清除延时定时器
+            setTimeout(loadingTimer);
+          });
         let timer = null;
         if (options.timeout) {
           // 如果设置了超时时间，则设置定时器
@@ -336,6 +356,9 @@ function createRenderer(options) {
           } else if (error.value && options.errorComponent) {
             // 如果发生错误并且指定了ErrorComponent，则渲染ErrorComponent
             return { type: options.errorComponent, props: { error: error.value } };
+          } else if (loading.value && options.loadingComponent) {
+            // 如果正在加载并且指定了LoadingComponent，则渲染LoadingComponent
+            return { type: options.loadingComponent };
           } else {
             return placeholder;
           }

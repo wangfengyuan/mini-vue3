@@ -1733,3 +1733,99 @@ function defineAsyncComponent(options) {
   }
 }
 ```
+加载超时会创建一个新的错误对象，渲染时只要发生错误并且指定了ErrorComponent，则渲染ErrorComponent，并将error作为组件的props传递
+
+## 延迟与Loading组件
+太早加载Loading，如果网络状态好，会导致loading刚完成渲染就进入卸载阶段，因此需要支持设置延时的功能
+```
+const AsyncComp = defineAsyncComponent({
+  loader: () => import('CompA.vue'),
+  delay: 2000, // 超时时间ms
+  loadingComponent: MyLoadingComp // 指定出错时要渲染的组件
+})
+```
+具体实现如下
+```
+function defineAsyncComponent(options) {
+  // options可以是配置项，也可以只是加载器函数
+  if (typeof options === 'function') {
+    options = { loader: options };
+  }
+  const { loader } = options;
+  // 存储异步加载的组件
+  let InnerComp = null;
+  // 返回一个包裹组件
+  return {
+    name: 'AsyncComponentWrapper',
+    setup() {
+      // 异步组件是否加载成功
+      const loaded = ref(false);
+      // 定义error对象
+      const error = shallowRef(null);
+      // 代表是否正在加载
+      const loading = ref(true);
+      const loadingTimer = null;
+      // 如果有 delay 选项，时间到后将loading.value设置为true
+      if (options.delay) {
+        loadingTimer = setTimeout(() => {
+          loading.value = true;
+        }, options.delay)
+      } else {
+        // 如果没有delay，则立即设置loading.value为true
+        loading.value = true;
+      }
+      // 执行加载器函数，返回promise实例，加载成功后赋值给InnerComp，并设置loaded为true
+      loader()
+        .then(c => {
+          InnerComp = c;
+          loaded.value = true;
+        })
+        .catch(e => error.value = e) // catch捕获加载中的错误
+        .finally(() => {
+          loading.value = false;
+          // 加载完毕后，无论成功与否清除延时定时器
+          setTimeout(loadingTimer);
+        });
+      let timer = null;
+      if (options.timeout) {
+        // 如果设置了超时时间，则设置定时器
+        timer = setTimeout(() => {
+          // 创建一个错误
+          const err = new Error('组件加载超时');
+          error.value = err;
+        }, options.timeout)
+      }
+      // 包装组件被卸载时清除定时器
+      onMounted(() => clearTimeout(timer));
+      // 占位内容
+      const placeholder = { type: Text, children: '' };
+      return () => {
+        // 如果加载成功则渲染组件，否则渲染一个占位内容
+        if (loaded.value) {
+          return { type: InnerComp };
+        } else if (error.value && options.errorComponent) {
+          // 如果发生错误并且指定了ErrorComponent，则渲染ErrorComponent
+          return { type: options.errorComponent, props: { error: error.value } };
+        } else if (loading.value && options.loadingComponent) {
+          // 如果正在加载并且指定了LoadingComponent，则渲染LoadingComponent
+          return { type: options.loadingComponent };
+        } else {
+          return placeholder;
+        }
+      }
+    }
+  }
+}
+
+```
+注意加载异步组件完毕时，无论成功与否都要清除延迟定时器，不然仍然会展示loading组件
+
+
+
+
+
+
+
+
+
+
