@@ -1676,3 +1676,60 @@ function defineAsyncComponent(options) {
   }
 }
 ```
+在上面基础上，还希望提供一下能力
+- 错误发生时，把错误的props传递过去，便于用户更细粒度的处理
+- 除了超时之外，能处理其他加载错误比如网络失败
+
+实现如下
+```
+function defineAsyncComponent(options) {
+  // options可以是配置项，也可以只是加载器函数
+  if (typeof options === 'function') {
+    options = { loader: options };
+  }
+  const { loader } = options;
+  // 存储异步加载的组件
+  let InnerComp = null;
+  // 返回一个包裹组件
+  return {
+    name: 'AsyncComponentWrapper',
+    setup() {
+      // 异步组件是否加载成功
+      const loaded = ref(false);
+      // 定义error对象
+      const error = shallowRef(null);
+      // 执行加载器函数，返回promise实例，加载成功后赋值给InnerComp，并设置loaded为true
+      loader()
+        .then(c => {
+          InnerComp = c;
+          loaded.value = true;
+        })
+        .catch(e => error.value = e); // catch捕获加载中的错误
+      let timer = null;
+      if (options.timeout) {
+        // 如果设置了超时时间，则设置定时器
+        timer = setTimeout(() => {
+          // 创建一个错误
+          const err = new Error('组件加载超时');
+          error.value = err;
+        }, options.timeout)
+      }
+      // 包装组件被卸载时清除定时器
+      onMounted(() => clearTimeout(timer));
+      // 占位内容
+      const placeholder = { type: Text, children: '' };
+      return () => {
+        // 如果加载成功则渲染组件，否则渲染一个占位内容
+        if (loaded.value) {
+          return { type: InnerComp };
+        } else if (error.value && options.errorComponent) {
+          // 如果发生错误并且指定了ErrorComponent，则渲染ErrorComponent
+          return { type: options.errorComponent, props: { error: error.value } };
+        } else {
+          return placeholder;
+        }
+      }
+    }
+  }
+}
+```
