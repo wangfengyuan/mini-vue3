@@ -408,7 +408,7 @@ function watch(source, cb) {
   oldValue = effectFn();
 } 
 ```
-实现如上，通过lazy，然后手动调用一次effectFn，获取初始值，之后scheduler中执行后回去newValue
+实现如上，通过lazy，然后手动调用一次effectFn，获取初始值，之后scheduler中执行后获取newValue
 
 ### 立即执行的watch与回调执行时机
 上面实现，只有数据发生变化时才执行回调，接下来通过添加immediate选项并且为true时，回调函数会立刻执行一次
@@ -1540,3 +1540,81 @@ function mountComponent() {
 }
 
 ```
+
+## 异步组件和函数式组件
+
+## 异步组价要解决的问题
+异步组件指以异步的方式加载并渲染一个组件，在代码分割、服务端下发组件等场景尤为重要，函数式组件允许使用一个函数定义组件，特点是：无状态、编写简单并直观，假设一个场景如下
+```
+<template>
+  <CompA />
+  <component :is="asyncComp">
+</template>
+
+export default {
+  components: { CompA }
+  setup() {
+    const asyncComp = ref(null);
+    // 异步加载组件
+    import('CompB.vue').then(CompB => asyncComp.value = CompB)
+    return {
+      asyncComp
+    }
+  }
+}
+
+```
+虽然用户可以实现组件的异步加载和渲染，但整体实现还是比较复杂的，通常我们会考虑
+- 如果组件加载失败或超时时，是否要渲染Error组件？
+- 组件加载时是否需要展示占位内容？比如渲染一个Loading组件
+- 组件加载的速度可能很快，也可能很慢，是否需要设置一个延迟展示的Loading组件的时间？组件在200ms内没有加载才展示Loading，避免组件加载太快导致闪烁
+- 组件加载失败是否需要重试
+
+为了解决上面问题，需要在框架层面为异步组件提供更好的封装，对应的能力为
+- 允许用户指定加载出错时要渲染的内容
+- 允许用户指定Loading组件，以及展示该组件的延迟时间
+- 允许用户设置加载组件的超时时间
+- 加载失败允许重试
+
+## 异步组件的实现原理
+
+## 封装defineAsyncComponent函数
+异步组件本质是通过封装手段来实现友好的用户接口，如下
+```
+<template>
+  <AsyncComp />
+</template>
+
+export default {
+  components: { 
+    // defineAsyncComponent定义一个异步组件，接收一个加载器作为参数
+    AsyncComp: defineAsyncComponent(() => import('CompA'))
+  }
+}
+```
+这种方式比上面实现方式简单直接的多
+
+```
+function defineAsyncComponent(loader) {
+  // 存储异步加载的组件
+  let InnerComp = null;
+  // 返回一个包裹组件
+  return {
+    name: 'AsyncComponentWrapper',
+    setup() {
+      // 异步组件是否加载成功
+      const loaded = ref(false);
+      // 执行加载器函数，返回promise实例，加载成功后赋值给InnerComp，并设置loaded为true
+      loader().then(c => {
+        InnerComp = c;
+        loaded.value = true;
+      });
+      return () => {
+        // 如果加载成功则渲染组件，否则渲染一个占位内容
+        return loaded.value ? { type: InnerComp } : { type: Text, children: '' };
+      }
+    }
+  }
+}
+```
+defineAsyncComponent函数本质上是一个高阶组件，返回包装组件

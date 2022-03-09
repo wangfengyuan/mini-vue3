@@ -293,6 +293,28 @@ function createRenderer(options) {
     }
   }
 
+  function defineAsyncComponent(loader) {
+    // 存储异步加载的组件
+    let InnerComp = null;
+    // 返回一个包裹组件
+    return {
+      name: 'AsyncComponentWrapper',
+      setup() {
+        // 异步组件是否加载成功
+        const loaded = ref(false);
+        // 执行加载器函数，返回promise实例，加载成功后赋值给InnerComp，并设置loaded为true
+        loader().then(c => {
+          InnerComp = c;
+          loaded.value = true;
+        });
+        return () => {
+          // 如果加载成功则渲染组件，否则渲染一个占位内容
+          return loaded.value ? <InnerComp /> : <div>Loading...</div>;
+        }
+      }
+    }
+  }
+
   function mountComponent(vnode, container, anchor) {
     // 通过vnode.type获取选项对象
     const componentOptions = vnode.type;
