@@ -3,9 +3,12 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "test": "vitest"
   },
   "devDependencies": {
-    "vite": "^2.8.6"
+    "typescript": "^4.8.4",
+    "vite": "^2.8.6",
+    "vitest": "^0.25.2"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "name": "@mini-vue3/reactivity",
+  "version": "1.0.0",
+  "description": "@mini-vue3/reactivity",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index"
+  },
+  "author": "",
+  "license": "ISC"
+}
