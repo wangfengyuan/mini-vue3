@@ -1,25 +1,27 @@
-import { activeEffect } from './effect';
+import { activeEffect, Dep } from './effect';
 
-const bucket = new WeakMap();
+const bucket: WeakMap<Object, Map<string, Dep>>= new WeakMap();
 
 function track(target, key) {
   if (!activeEffect) return;
-  let depsMap = bucket.get(target);
+  let depsMap: Map<string, Dep> | undefined = bucket.get(target);
   if (!depsMap) {
-    bucket.set(target, (depsMap = new Map()))
+    bucket.set(target, (depsMap = new Map<string, Dep>()))
   }
-  let deps = depsMap.get(key);
+  let deps: Dep | undefined = depsMap.get(key);
   if (!deps) {
     depsMap.set(key, (deps = new Set()));
   }
   deps.add(activeEffect);
+  activeEffect.deps.push(deps);
 }
 
 
 function trigger(target, key) {
-  const depsMap = bucket.get(target);
+  const depsMap = bucket.get(target)!;
   const effects = depsMap.get(key);
-  effects && effects.forEach(fn => fn());
+  const effectsToRun: Dep = new Set(effects);
+  effectsToRun.forEach(fn => fn.run());
 }
 
 
