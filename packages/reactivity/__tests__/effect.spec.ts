@@ -33,4 +33,15 @@ describe("effect", () => {
     obj.text = '111'; // 清除effect重新再次收集，obj.ok = false;后obj.text与effect无依赖关系
     expect(fnSpy).toHaveBeenCalledTimes(2);
   });
+  it('effect返回runner,主动调用可以触发执行', () => {
+    let foo = 0;
+    const runner = effect(() => {
+      foo++;
+      return foo;
+    });
+    expect(foo).toBe(1);
+    runner();
+    expect(foo).toBe(2);
+    expect(runner()).toBe(3);
+  })
 });

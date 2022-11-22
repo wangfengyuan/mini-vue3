@@ -9,13 +9,14 @@ export class ReactiveEffect {
   run() {
     cleanupEffect(this);
     activeEffect = this;
-    this.fn();
+    return this.fn();
   }
 }
 
 export function effect(fn) {
   const reactiveEffect = new ReactiveEffect(fn);
   reactiveEffect.run();
+  return reactiveEffect.run.bind(reactiveEffect)
 }
 
 function cleanupEffect(effect: ReactiveEffect) {
