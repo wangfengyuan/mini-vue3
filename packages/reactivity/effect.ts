@@ -4,10 +4,13 @@ export type Dep = Set<ReactiveEffect>
 
 export type ReactiveEffectOptions = {
   scheduler?: Function
+  onStop?: Function
 }
 
 export class ReactiveEffect {
   public scheduler: Function | null = null;
+  onStop?: () => void;
+  active = true;
   public deps: Dep[] = []
   constructor(public fn) {
   }
@@ -16,13 +19,28 @@ export class ReactiveEffect {
     activeEffect = this;
     return this.fn();
   }
+  stop() {
+    if (this.active) {
+      cleanupEffect(this);
+      if (this.onStop) {
+        this.onStop();
+      }
+      this.active = false;
+    }
+  }
 }
 
 export function effect(fn, option: ReactiveEffectOptions = {}) {
   const reactiveEffect = new ReactiveEffect(fn);
   Object.assign(reactiveEffect, option)
   reactiveEffect.run();
-  return reactiveEffect.run.bind(reactiveEffect)
+  const runner: any = reactiveEffect.run.bind(reactiveEffect);
+  runner.effect = reactiveEffect;
+  return runner;
+}
+
+export function stop(runner) {
+  runner.effect.stop();
 }
 
 function cleanupEffect(effect: ReactiveEffect) {
