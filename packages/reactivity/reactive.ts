@@ -21,7 +21,13 @@ function trigger(target, key) {
   const depsMap = bucket.get(target)!;
   const effects = depsMap.get(key);
   const effectsToRun: Dep = new Set(effects);
-  effectsToRun.forEach(fn => fn.run());
+  effectsToRun.forEach(fn => {
+    if (fn.scheduler) {
+      fn.scheduler();
+    } else {
+      fn.run()
+    }
+  });
 }
 
 

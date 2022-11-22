@@ -2,8 +2,13 @@ export let activeEffect: any = null;
 
 export type Dep = Set<ReactiveEffect>
 
+export type ReactiveEffectOptions = {
+  scheduler?: Function
+}
+
 export class ReactiveEffect {
-  deps: Dep[] = []
+  public scheduler: Function | null = null;
+  public deps: Dep[] = []
   constructor(public fn) {
   }
   run() {
@@ -13,8 +18,9 @@ export class ReactiveEffect {
   }
 }
 
-export function effect(fn) {
+export function effect(fn, option: ReactiveEffectOptions = {}) {
   const reactiveEffect = new ReactiveEffect(fn);
+  Object.assign(reactiveEffect, option)
   reactiveEffect.run();
   return reactiveEffect.run.bind(reactiveEffect)
 }
