@@ -1,3 +1,5 @@
+import { extend } from '@mini-vue3/shared';
+
 export let activeEffect: any = null;
 
 export type Dep = Set<ReactiveEffect>
@@ -32,7 +34,7 @@ export class ReactiveEffect {
 
 export function effect(fn, option: ReactiveEffectOptions = {}) {
   const reactiveEffect = new ReactiveEffect(fn);
-  Object.assign(reactiveEffect, option)
+  extend(reactiveEffect, option)
   reactiveEffect.run();
   const runner: any = reactiveEffect.run.bind(reactiveEffect);
   runner.effect = reactiveEffect;
