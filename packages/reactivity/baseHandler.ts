@@ -3,11 +3,15 @@ import { isObject } from '@mini-vue3/shared';
 
 const get = createGetter();
 const set = createSetter();
-const shallowGet = createGetter(true);
+const shallowGet = createGetter(false, true);
+const readonlyGet = createGetter(true);
+const readonlySet = createSetter(true);
 
-function createGetter(isShallow = false) {
+function createGetter(isReadonly = false, isShallow = false) {
   return function get(target, key, receiver) {
-    track(target, key);
+    if (!isReadonly) {
+      track(target, key);
+    } 
     // 得到原始结果
     const res = Reflect.get(target, key, receiver)
     if (isShallow) {
@@ -21,8 +25,12 @@ function createGetter(isShallow = false) {
   };
 }
 
-function createSetter() {
+function createSetter(isReadonly = false) {
   return function set(target, key, value, receiver) {
+    if (isReadonly) {
+      console.warn(`属性${key}是只读的`);
+      return true;
+    }
     const res = Reflect.set(target, key, value, receiver);
     trigger(target, key);
     return res;
@@ -37,4 +45,9 @@ export const mutableHandlers = {
 export const shallowReactiveHandlers = {
   get: shallowGet,
   set,
+}
+
+export const readonlyReactiveHandlers = {
+  get: readonlyGet,
+  set: readonlySet,
 }

@@ -1,5 +1,5 @@
 import { activeEffect, Dep } from './effect';
-import { mutableHandlers, shallowReactiveHandlers } from './baseHandler';
+import { mutableHandlers, shallowReactiveHandlers, readonlyReactiveHandlers } from './baseHandler';
 
 const bucket: WeakMap<Object, Map<string, Dep>>= new WeakMap();
 
@@ -39,6 +39,10 @@ export function trigger(target, key) {
 export function reactive(raw) {
   // 第二个参数代表是否为浅响应，默认为false,即非浅响应
   return createReactiveObject(raw, mutableHandlers)
+}
+
+export function readonly(raw) {
+  return createReactiveObject(raw, readonlyReactiveHandlers);
 }
 
 export function shallowReactive(raw) {
