@@ -1,8 +1,9 @@
 import { activeEffect, Dep } from './effect';
+import { mutableHandlers } from './baseHandler';
 
 const bucket: WeakMap<Object, Map<string, Dep>>= new WeakMap();
 
-function track(target, key) {
+export function track(target, key) {
   if (!activeEffect) return;
   let depsMap: Map<string, Dep> | undefined = bucket.get(target);
   if (!depsMap) {
@@ -17,7 +18,7 @@ function track(target, key) {
 }
 
 
-function trigger(target, key) {
+export function trigger(target, key) {
   const depsMap = bucket.get(target)!;
   const effects = depsMap.get(key);
   const effectsToRun: Dep = new Set(effects);
@@ -32,15 +33,5 @@ function trigger(target, key) {
 
 
 export function reactive(data) {
-  return new Proxy(data, {
-    get(target, key, receiver) {
-      track(target, key);
-      return Reflect.get(target, key, receiver)
-    },
-    set(target, key, val, receiver) {
-      const res = Reflect.set(target, key, val, receiver);
-      trigger(target, key);
-      return res;
-    }
-  })
+  return new Proxy(data, mutableHandlers);
 }
