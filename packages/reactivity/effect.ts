@@ -9,6 +9,8 @@ export type ReactiveEffectOptions = {
   onStop?: Function
 }
 
+const effectStack: ReactiveEffect[]  = []
+
 export class ReactiveEffect {
   public scheduler: Function | null = null;
   onStop?: () => void;
@@ -19,7 +21,13 @@ export class ReactiveEffect {
   run() {
     cleanupEffect(this);
     activeEffect = this;
-    return this.fn();
+    // 当前副作用函数入栈
+    effectStack.push(this);
+    const res = this.fn();
+    // 调用之后将当前副作用函数出站，并将activeEffect还原
+    effectStack.pop();
+    activeEffect = effectStack[effectStack.length - 1];
+    return res;
   }
   stop() {
     if (this.active) {
