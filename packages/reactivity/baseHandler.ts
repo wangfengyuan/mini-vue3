@@ -1,4 +1,4 @@
-import { track, trigger, reactive } from './reactive';
+import { track, trigger, reactive, ReactiveFlags } from './reactive';
 import { isObject } from '@mini-vue3/shared';
 
 const get = createGetter();
@@ -9,6 +9,11 @@ const readonlySet = createSetter(true);
 
 function createGetter(isReadonly = false, isShallow = false) {
   return function get(target, key, receiver) {
+    if (key === ReactiveFlags.IS_REACTIVE) {
+      return !isReadonly;
+    } else if (key === ReactiveFlags.IS_READONLY) {
+      return isReadonly;
+    }
     if (!isReadonly) {
       track(target, key);
     } 

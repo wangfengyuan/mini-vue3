@@ -1,4 +1,4 @@
-import { readonly } from "../reactive";
+import { readonly, isReadonly } from "../reactive";
 import { effect } from "../effect";
 
 describe("readonly", () => {
@@ -19,5 +19,12 @@ describe("readonly", () => {
 
     user.age = 11;
     expect(console.warn).toHaveBeenCalledWith('属性age是只读的');
+  });
+  it("isReadonly判断是否是可读的", () => {
+    const original = { foo: 1 };
+    const observed = readonly(original);
+    expect(observed).not.toBe(original);
+    expect(isReadonly(observed)).toBe(true);
+    expect(isReadonly(original)).toBe(false);
   });
 });
