@@ -1,6 +1,7 @@
 import { extend } from '@mini-vue3/shared';
 
 export let activeEffect: any = null;
+const bucket: WeakMap<Object, Map<string, Dep>>= new WeakMap();
 
 export type Dep = Set<ReactiveEffect>
 
@@ -59,4 +60,42 @@ function cleanupEffect(effect: ReactiveEffect) {
     dep.delete(effect)
   });
   effect.deps.length = 0;
+}
+
+export function track(target, key) {
+  if (!activeEffect) return;
+  let depsMap: Map<string, Dep> | undefined = bucket.get(target);
+  if (!depsMap) {
+    bucket.set(target, (depsMap = new Map<string, Dep>()))
+  }
+  let deps: Dep | undefined = depsMap.get(key);
+  if (!deps) {
+    depsMap.set(key, (deps = new Set()));
+  }
+  // 看看 dep 之前有没有添加过，添加过的话 那么就不添加了
+  trackEffects(deps);
+}
+
+export function trackEffects(deps) {
+  if (!activeEffect) return;
+  if (deps.has(activeEffect)) return;
+  deps.add(activeEffect);
+  activeEffect.deps.push(deps);
+}
+
+export function triggerEffects(deps) {
+  const effectsToRun: Dep = new Set(deps);
+  effectsToRun.forEach(fn => {
+    if (fn.scheduler) {
+      fn.scheduler();
+    } else {
+      fn.run()
+    }
+  });
+}
+
+export function trigger(target, key) {
+  const depsMap = bucket.get(target)!;
+  const effects = depsMap.get(key);
+  triggerEffects(effects);
 }

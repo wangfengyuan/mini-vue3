@@ -1,4 +1,5 @@
-import { track, trigger, reactive, ReactiveFlags, readonly } from './reactive';
+import { reactive, ReactiveFlags, readonly } from './reactive';
+import { track, trigger } from './effect';
 import { isObject } from '@mini-vue3/shared';
 
 const get = createGetter();
