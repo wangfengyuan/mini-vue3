@@ -1,5 +1,5 @@
 import { activeEffect, Dep } from './effect';
-import { mutableHandlers, shallowReactiveHandlers, readonlyReactiveHandlers } from './baseHandler';
+import { mutableHandlers, shallowReactiveHandlers, shallowReadonlyHandlers, readonlyHandlers } from './baseHandler';
 
 const bucket: WeakMap<Object, Map<string, Dep>>= new WeakMap();
 
@@ -51,12 +51,16 @@ export function reactive(raw) {
 }
 
 export function readonly(raw) {
-  return createReactiveObject(raw, readonlyReactiveHandlers);
+  return createReactiveObject(raw, readonlyHandlers);
 }
 
 export function shallowReactive(raw) {
   return createReactiveObject(raw, shallowReactiveHandlers)
 } 
+
+export function shallowReadonly(raw) {
+  return createReactiveObject(raw, shallowReadonlyHandlers);
+}
 
 function createReactiveObject(target, baseHandlers) {
   return new Proxy(target, baseHandlers);
