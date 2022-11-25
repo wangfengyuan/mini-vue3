@@ -1,4 +1,4 @@
-import { track, trigger, reactive, ReactiveFlags } from './reactive';
+import { track, trigger, reactive, ReactiveFlags, readonly } from './reactive';
 import { isObject } from '@mini-vue3/shared';
 
 const get = createGetter();
@@ -24,7 +24,7 @@ function createGetter(isReadonly = false, isShallow = false) {
     }
     if (isObject(res)) {
       // 如果是对象，调用reactive将结果包装成响应式并返回
-      return reactive(res)
+      return isReadonly ? readonly(res): reactive(res)
     }
     return res;
   };

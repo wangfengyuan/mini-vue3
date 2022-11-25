@@ -21,10 +21,12 @@ describe("readonly", () => {
     expect(console.warn).toHaveBeenCalledWith('属性age是只读的');
   });
   it("isReadonly判断是否是可读的", () => {
-    const original = { foo: 1 };
-    const observed = readonly(original);
-    expect(observed).not.toBe(original);
-    expect(isReadonly(observed)).toBe(true);
+    const original = { foo: 1, bar: { baz: 2 } };
+    const wrapped = readonly(original);
+    expect(wrapped).not.toBe(original);
+    expect(isReadonly(wrapped)).toBe(true);
     expect(isReadonly(original)).toBe(false);
+    expect(isReadonly(wrapped.bar)).toBe(true);
+    expect(isReadonly(original.bar)).toBe(false);
   });
 });
