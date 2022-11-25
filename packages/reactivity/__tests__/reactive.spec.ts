@@ -1,4 +1,4 @@
-import { reactive, isReactive } from "../reactive";
+import { reactive, isReactive, isProxy } from "../reactive";
 describe("reactive", () => {
   it("isReactive判断是否是响应式的", () => {
     const original = { foo: 1 };
@@ -7,6 +7,7 @@ describe("reactive", () => {
     expect(observed.foo).toBe(1);
     expect(isReactive(observed)).toBe(true);
     expect(isReactive(original)).toBe(false);
+    expect(isProxy(observed)).toBe(true);
   });
   test("reactive深层处理", () => {
     const original = {
