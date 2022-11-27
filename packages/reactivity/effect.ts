@@ -96,6 +96,6 @@ export function triggerEffects(deps) {
 
 export function trigger(target, key) {
   const depsMap = bucket.get(target)!;
-  const effects = depsMap.get(key);
-  triggerEffects(effects);
+  const effects = depsMap && depsMap.get(key);
+  effects && triggerEffects(effects);
 }
