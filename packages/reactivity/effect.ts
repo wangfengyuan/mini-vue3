@@ -13,11 +13,10 @@ export type ReactiveEffectOptions = {
 const effectStack: ReactiveEffect[]  = []
 
 export class ReactiveEffect {
-  public scheduler: Function | null = null;
   onStop?: () => void;
   active = true;
   public deps: Dep[] = []
-  constructor(public fn) {
+  constructor(public fn, public scheduler) {
   }
   run() {
     cleanupEffect(this);
