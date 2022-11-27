@@ -1,4 +1,4 @@
-import { reactive, isReactive, isProxy } from "../reactive";
+import { reactive, isReactive, isProxy } from "../src";
 describe("reactive", () => {
   it("isReactive判断是否是响应式的", () => {
     const original = { foo: 1 };

@@ -1,5 +1,5 @@
 import { trackEffects, triggerEffects } from './effect';
-import { hasChanged } from '@mini-vue3/shared';
+import { hasChanged } from '@mini-vue3/shared/src';
 
 export class RefImpl {
   private _value: any;

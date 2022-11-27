@@ -6,6 +6,14 @@
   "scripts": {
     "dev": "node index"
   },
+  "buildOptions": {
+    "name": "VueReactivity",
+    "formats": [
+      "esm-bundler",
+      "cjs",
+      "global"
+    ]
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {

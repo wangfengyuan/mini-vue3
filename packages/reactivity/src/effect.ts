@@ -1,4 +1,4 @@
-import { extend } from '@mini-vue3/shared';
+import { extend } from '@mini-vue3/shared/src';
 
 export let activeEffect: any = null;
 const bucket: WeakMap<Object, Map<string, Dep>>= new WeakMap();
@@ -41,7 +41,7 @@ export class ReactiveEffect {
 }
 
 export function effect(fn, option: ReactiveEffectOptions = {}) {
-  const reactiveEffect = new ReactiveEffect(fn);
+  const reactiveEffect = new ReactiveEffect(fn, option.scheduler);
   extend(reactiveEffect, option)
   reactiveEffect.run();
   const runner: any = reactiveEffect.run.bind(reactiveEffect);

@@ -1,5 +1,4 @@
-import { computed } from "../computed";
-import { reactive } from "../reactive";
+import { computed, reactive } from "../src";
 
 describe("computed", () => {
   it("基础使用", () => {
@@ -23,19 +22,16 @@ describe("computed", () => {
     });
     const cValue = computed(getter);
 
-    // lazy
-    expect(getter).not.toHaveBeenCalled();
-
     // should not compute until needed
     value.foo = 2;
-    expect(getter).toHaveBeenCalledTimes(1);
+    expect(getter).toHaveBeenCalledTimes(0);
 
     // now it should compute
     expect(cValue.value).toBe(2);
-    expect(getter).toHaveBeenCalledTimes(2);
+    expect(getter).toHaveBeenCalledTimes(1);
 
     // should not compute again
     cValue.value;
-    expect(getter).toHaveBeenCalledTimes(2);
+    expect(getter).toHaveBeenCalledTimes(1);
   });
 });

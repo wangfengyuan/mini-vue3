@@ -1,5 +1,5 @@
-import { reactive, shallowReactive } from "../reactive";
-import { effect } from '../effect';
+import { reactive, shallowReactive, effect } from "../src";
+
 describe("shallowReactive", () => {
   it('reactive默认是深度响应式', () => {
     const proxy = reactive({ n: { foo: 1 } })

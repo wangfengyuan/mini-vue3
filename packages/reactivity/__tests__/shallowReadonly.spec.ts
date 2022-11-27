@@ -1,4 +1,4 @@
-import { isReadonly, shallowReadonly } from "../reactive";
+import { isReadonly, shallowReadonly } from "../src";
 
 describe("shallowReadonly", () => {
   test("shallowReadonly设置后深层属性是可赋值的", () => {

@@ -1,5 +1,4 @@
-import { effect, stop } from "../effect";
-import { reactive } from "../reactive";
+import { effect, stop, reactive } from "../src";
 
 describe("effect", () => {
   it('effect会执行一次', () => {

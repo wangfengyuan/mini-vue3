@@ -1,6 +1,4 @@
-import { ref, isRef, unRef, toRef, toRefs, proxyRefs } from '../ref';
-import { effect } from '../effect';
-import { reactive } from '../reactive';
+import { ref, isRef, unRef, toRef, toRefs, proxyRefs, effect, reactive } from '../src';
 
 describe('ref', () => {
   it("ref有value属性，对应原始值", () => {

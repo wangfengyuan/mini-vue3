@@ -1,5 +1,4 @@
-import { readonly, isReadonly, isProxy } from "../reactive";
-import { effect } from "../effect";
+import { readonly, isReadonly, isProxy, effect } from "../src";
 
 describe("readonly", () => {
   it("readonly可读，意味着无法修改，因此无需建立响应联系", () => {
