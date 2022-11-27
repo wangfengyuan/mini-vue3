@@ -1,5 +1,6 @@
-import { ref } from '../ref';
+import { ref, isRef, unRef } from '../ref';
 import { effect } from '../effect';
+import { reactive } from '../reactive';
 
 describe('ref', () => {
   it("ref有value属性，对应原始值", () => {
@@ -23,5 +24,20 @@ describe('ref', () => {
     a.value = 2;
     expect(calls).toBe(2);
     expect(dummy).toBe(2);
+  });
+  it("isRef方法", () => {
+    const a = ref(1);
+    const user = reactive({
+      age: 1,
+    });
+    expect(isRef(a)).toBe(true);
+    expect(isRef(1)).toBe(false);
+    expect(isRef(user)).toBe(false);
+  });
+
+  it("unRef能解套ref", () => {
+    const a = ref(1);
+    expect(unRef(a)).toBe(1);
+    expect(unRef(1)).toBe(1);
   });
 })
