@@ -1,7 +1,8 @@
 // 打包单个模块
 const fs = require('fs');
 const execa = require('execa') //开启子进程进行打包，最终还是使用rollup打包
-const target = 'reactivity'
+const args = require('minimist')(process.argv.slice(2))
+const target = args._[0] || 'vue'
 
 if (fs.statSync(`packages/${target}`).isDirectory()) {
   build(target)

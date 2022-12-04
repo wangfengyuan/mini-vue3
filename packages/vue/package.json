@@ -1,0 +1,22 @@
+{
+  "name": "mini-vue3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "buildOptions": {
+    "name": "MiniVue3",
+    "formats": [
+      "cjs",
+      "esm-bundler",
+      "global"
+    ]
+  },
+  "author": "",
+  "license": "ISC"
+}
