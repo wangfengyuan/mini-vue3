@@ -1,7 +1,7 @@
 import { createApp, h } from '../dist/vue.esm-bundler.js';
 const App = {
   render() {
-    return h("div", "hi, " + this.msg);
+    return h("div", null, "hi, " + this.msg);
   },
 
   setup() {

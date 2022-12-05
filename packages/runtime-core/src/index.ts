@@ -4,13 +4,25 @@ export { h } from './h';
 
 export function createRenderer(renderOptions) {
 
-  const patch = (vnode, container) => {
-    processComponent(vnode, container);
+  const {
+    insert: hostInsert,
+    createElement: hostCreateElement,
+    setElementText: hostSetElementText,
+  } = renderOptions;
+
+  const patch = (n1, n2, container) => {
+    const { type } = n2;
+    if (typeof type === 'object') {
+      processComponent(n1, n2, container);
+    } else {
+      processElement(n1, n2, container);
+    }
   }
 
   const setupRenderEffect = (instance, container) => {
-    const subTree = instance.render();
-    // patch(subTree, container);
+    console.log('初始化调用render');
+    const subTree = instance.render.call(instance.setupState, instance.setupState);
+    patch(null, subTree, container);
   }
 
   function mountComponent(vnode: any, container) {
@@ -23,12 +35,29 @@ export function createRenderer(renderOptions) {
     setupRenderEffect(instance, container);
   }
 
-  const processComponent = (vnode, container) => {
-    mountComponent(vnode, container);
+  const processComponent = (n1, n2, container) => {
+    mountComponent(n2, container);
   }
 
+  const mountElement = (n2, container) => {
+    const { type, children } = n2;
+    const el = n2.el = hostCreateElement(type as string);
+    if (typeof children === 'string') {
+      hostSetElementText(el, children);
+    }
+    hostInsert(el, container);
+  }
+
+  const processElement = (n1, n2, container) => {
+    if (!n1) {
+      mountElement(n2, container);
+    }
+  }
+
+  // 将虚拟节点转化成真实节点渲染到容器中
   const render = (vnode, container) => {
-    processComponent(vnode, container);
+    // 更新和创建
+    patch(container._vnode || null, vnode, container);
   };
   return {
     render,

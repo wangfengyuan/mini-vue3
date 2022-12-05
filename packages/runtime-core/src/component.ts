@@ -6,8 +6,6 @@ export function createComponentInstance(vnode) {
   const instance = {
     vnode, // 实例对应的虚拟节点
     type, // 组件对象
-    // 组件自身的状态数据，即data
-    data: type.data(),
     isMounted: false, // 是否被挂载完成
     subTree: null, // 组件渲染完成后返回的内容, 即子树
   }
@@ -42,5 +40,8 @@ export function handleSetupResult(instance, setupResult) {
   } else if (isObject(setupResult)) {
     // 如果setup返回值不是函数，则作为数据状态赋值给setupState
     instance.setupState = setupResult;
+  }
+  if (!instance.render) {
+    instance.render = render;
   }
 }

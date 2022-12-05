@@ -1,3 +1,5 @@
 import { createVNode } from "./vnode";
 
-export const h = createVNode;
+export function h(tag, props?, children?) {
+  return createVNode(tag, props, children);
+};
