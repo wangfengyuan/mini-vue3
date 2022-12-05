@@ -30,7 +30,7 @@ function createRenderer(options) {
   function mountElement(vnode, container) {
     const el = vnode.el = createElement(vnode.type);
     // 如果子节点为字符串，代表元素具有文本节点
-    if (typeof vnode.children === 'string') {
+    if (typeof vnode.children === 'string' || typeof vnode.children === 'number') {
       // setElementText设置元素文本
       setElementText(el, vnode.children);
     } else if (Array.isArray(vnode.children)) {

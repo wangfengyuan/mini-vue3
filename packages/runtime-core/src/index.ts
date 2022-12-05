@@ -21,7 +21,11 @@ export function createRenderer(renderOptions) {
 
   const setupRenderEffect = (instance, container) => {
     console.log('初始化调用render');
-    const subTree = instance.render.call(instance.setupState, instance.setupState);
+    // 初次挂载 会调用render方法
+    // 渲染页面的时候响应式对象会取值,取值的时候会进行依赖收集 收集对应的effect
+    // 当渲染完成之后，如果数据发生了改变会再次执行当前方法
+    const subTree = instance.render.call(instance.proxy, instance.proxy);
+    instance.subTree = subTree;
     patch(null, subTree, container);
   }
 
@@ -42,10 +46,18 @@ export function createRenderer(renderOptions) {
   const mountElement = (n2, container) => {
     const { type, children } = n2;
     const el = n2.el = hostCreateElement(type as string);
-    if (typeof children === 'string') {
+    if (typeof children === 'string' || typeof children === 'number') {
       hostSetElementText(el, children);
+    } else if (Array.isArray(children)) {
+      mountChildren(children, el);
     }
     hostInsert(el, container);
+  }
+
+  const mountChildren = (children, container) => {
+    children.forEach(v => {
+      patch(null, v, container);
+    });
   }
 
   const processElement = (n1, n2, container) => {
