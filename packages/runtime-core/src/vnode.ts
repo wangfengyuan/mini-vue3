@@ -16,6 +16,11 @@ export function createVNode(type, props?, children?) {
     children,
     shapeFlag,
   };
+  if (typeof children === "string" || typeof children === "number") {
+    vnode.shapeFlag |= ShapeFlags.TEXT_CHILDREN;
+  } else if (Array.isArray(children)) {
+    vnode.shapeFlag |= ShapeFlags.ARRAY_CHILDREN;
+  }
 
   return vnode;
 }

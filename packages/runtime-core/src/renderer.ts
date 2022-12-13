@@ -48,9 +48,12 @@ export function createRenderer(renderOptions) {
   const mountElement = (n2, container) => {
     const { type, children, shapeFlag } = n2;
     const el = n2.el = hostCreateElement(type as string);
-    if (typeof children === 'string' || typeof children === 'number') {
-      hostSetElementText(el, children);
-    } else if (Array.isArray(children)) {
+    // children是文本
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      hostSetElementText(el, children)
+
+      // children是数组
+    } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       mountChildren(children, el);
     }
     hostInsert(el, container);
